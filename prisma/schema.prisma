@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Modèl User
+model User {
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  password             String
+  telephone            String    @default("")
+  adress               String    @default("")
+  isEmailConfirmed     Boolean   @default(false)
+  confirmationToken    String?
+  role                 UserRole  @default(CUSTOMER)
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
+  provider             String    @default("local")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  profile Profile?
+}
+
+// 2. Modèl Profile
+model Profile {
+  id        String  @id @default(uuid())
+  username  String? @unique
+  avatarUrl String?
+  bannerUrl String?
+  bio       String? @db.Text
+  location  String?
+  isArtist  Boolean @default(false)
+  verified  Boolean @default(false)
+
+  socialLinks Json? @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
+
+  // Relasyon User
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  // NOUVO: Yon atis ka gen plizyè tracks
+  tracks Track[]
+
+  updatedAt DateTime @updatedAt
+}
+
+// 3. Modèl Track (Mizik)
+model Track {
+  id       String  @id @default(uuid())
+  title    String
+  genre    String?
+  audioUrl String // URL ki soti nan Supabase Storage (bucket: tracks)
+  coverUrl String? // Foto kouvèti chante a
+  duration Float? // Pou n konnen longè mizik la
+  plays    Int     @default(0)
+
+  // Relasyon ak Atis la (Profile)
+  artistId String
+  artist   Profile @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([artistId])
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  CUSTOMER
+  SUPERCUSTOMER
+  ARTIST
+}
