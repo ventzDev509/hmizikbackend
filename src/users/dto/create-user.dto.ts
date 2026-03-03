@@ -1,6 +1,6 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
-import { UserRole } from 'generated/prisma/enums';
 
+import { UserRole } from '@prisma/client';
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'Non an obligatwa' })
