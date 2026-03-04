@@ -11,7 +11,7 @@ export class ProfilesService {
     async getMyProfile(userId: string) {
         const profile = await this.prisma.profile.findUnique({
             where: { userId },
-            include: { user: { select: { name: true, email: true } } },
+            include: { user: { select: {id:true, name: true, email: true } } },
         });
         if (!profile) throw new NotFoundException('Profile not found');
         return profile;
@@ -25,6 +25,7 @@ export class ProfilesService {
         });
         if (!profile) throw new NotFoundException('Itilizatè sa a pa egziste');
         return profile;
+
     }
 
     // Nan profile.service.ts

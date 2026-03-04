@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
 
@@ -9,19 +9,12 @@ export class TracksService {
         private supabaseService: SupabaseService,
     ) { }
 
+    // 1. KREYE YON TRACK (UPLOAD)
     async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
-        // 1. Nou verifye si atis la gen yon pwofil AK si li gen dwa upload (isArtist)
-        const profile = await this.prisma.profile.findUnique({
-            where: { userId },
-        });
+        const profile = await this.prisma.profile.findUnique({ where: { userId } });
 
-        if (!profile) {
-            throw new BadRequestException("Profil pa jwenn. Ou dwe kreye yon pwofil anvan.");
-        }
-
-        // Chèk sekirite: Èske se yon atis?
-        if (!profile.isArtist) {
-            throw new BadRequestException("Sèlman atis ki verifye ki ka pibliye mizik.");
+        if (!profile || !profile.isArtist) {
+            throw new BadRequestException("Sèlman atis ki ka pibliye mizik.");
         }
 
         if (!files.audio || !files.audio[0]) {
@@ -29,34 +22,154 @@ export class TracksService {
         }
 
         try {
-            // 2. Upload Audio sou Supabase (Lojik konpresyon an anndan sèvis sa a deja)
             const audioUrl = await this.supabaseService.uploadFile(files.audio[0], 'tracks');
-
-            // 3. Upload Cover sou Supabase (si li egziste)
             let coverUrl: string | null = null;
             if (files.cover && files.cover[0]) {
                 coverUrl = await this.supabaseService.uploadFile(files.cover[0], 'covers');
             }
 
-            // 4. Kreye Track la nan Database la ak Prisma
             return await this.prisma.track.create({
                 data: {
                     title: body.title,
                     genre: body.genre || "Konpa",
-                    // Asire nou ke duration se yon nimewo float pou player a
                     duration: body.duration ? parseFloat(body.duration) : 0,
-                    audioUrl: audioUrl,
-                    coverUrl: coverUrl,
+                    audioUrl,
+                    coverUrl,
                     artistId: profile.id,
                 },
-                // Nou ka mande Prisma retounen pwofil atis la tou si nou vle
-                include: {
-                    artist: true
-                }
+                include: { artist: true }
             });
         } catch (error) {
-            console.log(error)
-            throw new BadRequestException(`Erè pandan kreyasyon track la: ${error.message}`);
+            throw new BadRequestException(`Erè kreyasyon: ${error.message}`);
         }
+    }
+
+    // 2. JWENN TOUT TRACK YO (AK PAGINATION POU INFINITE SCROLL)
+    // limit: kantite done pou l pote, cursor: pwen kote l ap kòmanse a
+    async findAll(limit: number = 10, page: number = 1) {
+        const skip = (page - 1) * limit;
+
+        const [tracks, total] = await Promise.all([
+            this.prisma.track.findMany({
+                take: limit,
+                skip: skip,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    artist: {
+                        select: { username: true, user: { select: { name: true } } }
+                    }
+                }
+            }),
+            this.prisma.track.count()
+        ]);
+
+        return {
+            data: tracks,
+            meta: {
+                total,
+                page,
+                lastPage: Math.ceil(total / limit)
+            }
+        };
+    }
+
+    // 3. JWENN TRACK YON ATIS PRESI (Pwofil)
+    async findByArtist(artistId: string) {
+        return await this.prisma.track.findMany({
+            where: { artistId },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+    
+    // 8. JWENN TOUT MIZIK YON ITILIZATÈ PRESI (POU PWOFIL LI)
+    async findTracksByUserProfile(userId: string, limit: number = 10, page: number = 1) {
+        // a. Nou chèche pwofil la anvan pou nou jwenn artistId (profile.id)
+        const profile = await this.prisma.profile.findUnique({
+            where: { userId },
+        });
+
+        if (!profile) {
+            throw new NotFoundException("Pwofil sa a pa egziste.");
+        }
+
+        const skip = (page - 1) * limit;
+
+        // b. Nou rale mizik ki lye ak pwofil sa a sèlman
+        const [tracks, total] = await Promise.all([
+            this.prisma.track.findMany({
+                where: { artistId: profile.id }, // Se isit la filtè a fèt
+                take: limit,
+                skip: skip,
+                orderBy: { createdAt: 'desc' }, // Pi nouvo yo anlè
+                include: {
+                    artist: {
+                        select: {
+                            username: true,
+                            avatarUrl: true,
+                            user: { select: { name: true } }
+                        }
+                    }
+                }
+            }),
+            this.prisma.track.count({ where: { artistId: profile.id } })
+        ]);
+
+        return {
+            tracks,
+            meta: {
+                total,
+                page,
+                lastPage: Math.ceil(total / limit),
+                hasMore: page < Math.ceil(total / limit)
+            }
+        };
+    }
+
+    // 4. JWENN YON SÈL TRACK PA ID
+    async findOne(id: string) {
+        const track = await this.prisma.track.findUnique({
+            where: { id },
+            include: { artist: true }
+        });
+        if (!track) throw new NotFoundException("Mizik sa a pa egziste.");
+        return track;
+    }
+
+    // 5. MOUTE KANTITE FWA YO KOUTE YON MIZIK (PLAYS)
+    async incrementPlays(id: string) {
+        return await this.prisma.track.update({
+            where: { id },
+            data: { plays: { increment: 1 } }
+        });
+    }
+
+    // 6. MODIFYE YON TRACK
+    async update(userId: string, id: string, updateData: any) {
+        const track = await this.findOne(id);
+        const profile = await this.prisma.profile.findUnique({ where: { userId } });
+
+        if (track.artistId !== profile?.id) {
+            throw new ForbiddenException("Ou pa gen dwa modifye mizik sa a.");
+        }
+
+        return await this.prisma.track.update({
+            where: { id },
+            data: updateData
+        });
+    }
+
+    // 7. SIPRIME YON TRACK
+    async remove(userId: string, id: string) {
+        const track = await this.findOne(id);
+        const profile = await this.prisma.profile.findUnique({ where: { userId } });
+
+        if (track.artistId !== profile?.id) {
+            throw new ForbiddenException("Ou pa gen dwa siprime mizik sa a.");
+        }
+
+        // Nòmalman ou ta dwe siprime fichye yo sou Supabase tou isit la
+        // await this.supabaseService.deleteFile(track.audioUrl);
+
+        return await this.prisma.track.delete({ where: { id } });
     }
 }

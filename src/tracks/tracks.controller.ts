@@ -1,26 +1,84 @@
-import { 
-  Controller, Post, Body, UploadedFiles, UseInterceptors, UseGuards, Req 
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Param,
+    Delete,
+    UseInterceptors,
+    UploadedFiles,
+    Query,
+    ParseIntPipe,
+    Patch,
+    Request,
+    UseGuards
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { TracksService } from './tracks.service';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @Controller('tracks')
 export class TracksController {
-  constructor(private readonly tracksService: TracksService) {}
+    constructor(private readonly tracksService: TracksService) { }
 
-  @Post('upload')
-  @UseGuards(JwtAuthGuard) // Sèlman moun ki konekte ka upload
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'audio', maxCount: 1 },
-    { name: 'cover', maxCount: 1 },
-  ]))
-  async upload(
-    @Req() req: any,
-    @Body() body: any,
-    @UploadedFiles() files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }
-  ) {
-    // req.user soti nan JwtAuthGuard (ki gen id itilizatè a)
-    return this.tracksService.create(req.user.id, body, files);
-  }
+    // 1. KREYE YON MIZIK (Pwoteje ak JWT)
+    @UseGuards(JwtAuthGuard)
+    @Post('upload')
+    @UseInterceptors(FileFieldsInterceptor([
+        { name: 'audio', maxCount: 1 },
+        { name: 'cover', maxCount: 1 },
+    ]))
+    async uploadTrack(
+        @Request() req,
+        @Body() body: any,
+        @UploadedFiles() files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }
+    ) {
+        return this.tracksService.create(req.user.id, body, files);
+    }
+
+    // 2. JWENN TOUT MIZIK (Feed jeneral ak Infinite Scroll)
+    @Get()
+    async getAllTracks(
+        @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+        @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    ) {
+        return this.tracksService.findAll(limit, page);
+    }
+
+    // 3. JWENN MIZIK YON ITILIZATÈ PRESI (Pou Paj Pwofil la)
+   
+    @Get('user/:userId')
+    async getTracksByProfile(
+        @Param('userId') userId: string,
+        @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+        @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    ) {
+        return this.tracksService.findTracksByUserProfile(userId, limit, page);
+    }
+
+    // 4. JWENN YON SÈL MIZIK PA ID
+    @Get(':id')
+    async getOneTrack(@Param('id') id: string) {
+        return this.tracksService.findOne(id);
+    }
+
+    // 5. MOUTE KANTITE PLAYS (Lè yon moun koute)
+    @Patch(':id/play')
+    async addPlay(@Param('id') id: string) {
+        return this.tracksService.incrementPlays(id);
+    }
+
+    // 6. MODIFYE ENFÒMASYON MIZIK (Pwoteje)
+    @UseGuards(JwtAuthGuard)
+    @Patch(':id')
+    async updateTrack(@Request() req, @Param('id') id: string, @Body() updateData: any) {
+        return this.tracksService.update(req.user.id, id, updateData);
+    }
+
+    // 7. SIPRIME MIZIK (Pwoteje)
+    @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    async deleteTrack(@Request() req, @Param('id') id: string) {
+        return this.tracksService.remove(req.user.id, id);
+    }
 }
