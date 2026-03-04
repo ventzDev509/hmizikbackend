@@ -6,9 +6,11 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { TracksModule } from './tracks/tracks.module';
+import { SupabaseModule } from './common/supabase.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule],
   controllers: [AppController],
   providers: [AppService],
 })

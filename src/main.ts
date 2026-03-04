@@ -10,7 +10,7 @@ async function bootstrap() {
     transform: true,
   }));
   app.enableCors({
-    origin:process.env.LINK, 
+    origin: process.env.LINK,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: 'Content-Type, Accept, Authorization',
