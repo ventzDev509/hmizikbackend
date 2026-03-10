@@ -8,9 +8,10 @@ import { MailModule } from './mail/mail.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { TracksModule } from './tracks/tracks.module';
 import { SupabaseModule } from './common/supabase.module';
+import { LikesModule } from './likes/likes.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule],
   controllers: [AppController],
   providers: [AppService],
 })

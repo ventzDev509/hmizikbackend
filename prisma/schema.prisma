@@ -24,6 +24,7 @@ model User {
   updatedAt            DateTime  @updatedAt
 
   profile Profile?
+  likes   Like[]
 }
 
 // 2. Modèl Profile
@@ -65,6 +66,7 @@ model Track {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  likes     Like[]
 
   @@index([artistId])
 }
@@ -77,4 +79,13 @@ enum UserRole {
   ARTIST
 }
 
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  trackId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
+  @@unique([userId, trackId]) // Yon moun pa ka like menm mizik la 2 fwa
+}
