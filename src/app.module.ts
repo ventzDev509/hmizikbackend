@@ -9,9 +9,10 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { TracksModule } from './tracks/tracks.module';
 import { SupabaseModule } from './common/supabase.module';
 import { LikesModule } from './likes/likes.module';
+import { PlaylistModule } from './playlist/playlist.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule],
   controllers: [AppController],
   providers: [AppService],
 })

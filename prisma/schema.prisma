@@ -23,8 +23,9 @@ model User {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  profile Profile?
-  likes   Like[]
+  profile   Profile?
+  likes     Like[]
+  playlists Playlist[]
 }
 
 // 2. Modèl Profile
@@ -45,9 +46,9 @@ model Profile {
   userId String @unique
 
   // NOUVO: Yon atis ka gen plizyè tracks
-  tracks Track[]
-
-  updatedAt DateTime @updatedAt
+  tracks    Track[]
+  playlists Playlist[]
+  updatedAt DateTime   @updatedAt
 }
 
 // 3. Modèl Track (Mizik)
@@ -61,11 +62,11 @@ model Track {
   plays    Int     @default(0)
 
   // Relasyon ak Atis la (Profile)
-  artistId String
-  artist   Profile @relation(fields: [artistId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  artistId  String
+  artist    Profile    @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  playlists Playlist[] @relation("PlaylistTracks")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   likes     Like[]
 
   @@index([artistId])
@@ -87,5 +88,25 @@ model Like {
   track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@unique([userId, trackId]) // Yon moun pa ka like menm mizik la 2 fwa
+  @@unique([userId, trackId])
+}
+
+model Playlist {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  coverUrl    String? @default("https://picsum.photos/seed/playlist/400")
+  isPublic    Boolean @default(true)
+
+  // Relasyon ak User (Owner)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Relasyon ak Tracks (Many-to-Many)
+  tracks Track[] @relation("PlaylistTracks")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile   Profile? @relation(fields: [profileId], references: [id])
+  profileId String?
 }
