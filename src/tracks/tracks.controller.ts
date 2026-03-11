@@ -11,7 +11,8 @@ import {
     ParseIntPipe,
     Patch,
     Request,
-    UseGuards
+    UseGuards,
+    Req
 } from '@nestjs/common';
 import { TracksService } from './tracks.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -46,7 +47,7 @@ export class TracksController {
     }
 
     // 3. JWENN MIZIK YON ITILIZATÈ PRESI (Pou Paj Pwofil la)
-   
+
     @Get('user/:userId')
     async getTracksByProfile(
         @Param('userId') userId: string,
@@ -56,6 +57,31 @@ export class TracksController {
         return this.tracksService.findTracksByUserProfile(userId, limit, page);
     }
 
+
+    @Post(':id/play')
+    async incrementPlay(
+        @Param('id') id: string,
+        @Req() req: any // Nou itilize 'any' isit la pou evite erè tip yo
+    ) {
+        // Nou tcheke plizyè sous pou IP a (itil anpil lè w an pwodiksyon)
+        const ip = req.headers['x-forwarded-for'] ||
+            req.ip ||
+            req.connection?.remoteAddress ||
+            req.socket?.remoteAddress;
+
+        // Si w gen AuthGuard, userId ap disponib nan req.user
+        const userId = req.user?.id;
+
+        return this.tracksService.incrementPlays(id, userId, ip);
+    }
+
+    // Wout pou rale mizik ki Trending yo
+    @Get('trending')
+    async getTrending(@Query('limit') limit: string) {
+        // Nou konvèti limit la an nimewo
+        const take = limit ? parseInt(limit, 10) : 10;
+        return this.tracksService.findTrending(take);
+    }
     // 4. JWENN YON SÈL MIZIK PA ID
     @Get(':id')
     async getOneTrack(@Param('id') id: string) {

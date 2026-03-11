@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
-
+import { Prisma } from '@prisma/client';
 @Injectable()
 export class TracksService {
     constructor(
@@ -80,7 +80,7 @@ export class TracksService {
             orderBy: { createdAt: 'desc' }
         });
     }
-    
+
     // 8. JWENN TOUT MIZIK YON ITILIZATÈ PRESI (POU PWOFIL LI)
     async findTracksByUserProfile(userId: string, limit: number = 10, page: number = 1) {
         // a. Nou chèche pwofil la anvan pou nou jwenn artistId (profile.id)
@@ -136,13 +136,61 @@ export class TracksService {
     }
 
     // 5. MOUTE KANTITE FWA YO KOUTE YON MIZIK (PLAYS)
-    async incrementPlays(id: string) {
-        return await this.prisma.track.update({
-            where: { id },
-            data: { plays: { increment: 1 } }
+
+
+    async incrementPlays(trackId: string, userId?: string, ip?: string) {
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+        // Nou di TypeScript array sa a se yon lis kondisyon 'Play'
+        const orConditions: Prisma.PlayWhereInput[] = [];
+
+        if (userId) orConditions.push({ userId });
+        if (ip) orConditions.push({ userIp: ip });
+
+        const recentPlay = orConditions.length > 0
+            ? await this.prisma.play.findFirst({
+                where: {
+                    trackId,
+                    OR: orConditions,
+                    createdAt: { gte: thirtyMinutesAgo },
+                },
+            })
+            : null;
+
+        if (recentPlay) {
+            return await this.prisma.play.create({
+                data: { trackId, userId, userIp: ip },
+            });
+        }
+
+        return await this.prisma.$transaction([
+            this.prisma.play.create({
+                data: { trackId, userId, userIp: ip },
+            }),
+            this.prisma.track.update({
+                where: { id: trackId },
+                data: { playCount: { increment: 1 } },
+            }),
+        ]);
+    }
+    // 9. JWENN MIZIK KI GEN PLIS EKOUT (TRENDING)
+    async findTrending(limit: number = 10) {
+        return await this.prisma.track.findMany({
+            take: limit,
+            orderBy: {
+                // Sèvi ak playCount (ki se yon Int) olye de plays (ki se yon relasyon)
+                playCount: 'desc',
+            },
+            include: {
+                artist: {
+                    select: {
+                        username: true,
+                        user: { select: { name: true } }
+                    }
+                }
+            }
         });
     }
-
     // 6. MODIFYE YON TRACK
     async update(userId: string, id: string, updateData: any) {
         const track = await this.findOne(id);

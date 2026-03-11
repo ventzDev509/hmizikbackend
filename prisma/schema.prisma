@@ -59,9 +59,10 @@ model Track {
   audioUrl String // URL ki soti nan Supabase Storage (bucket: tracks)
   coverUrl String? // Foto kouvèti chante a
   duration Float? // Pou n konnen longè mizik la
-  plays    Int     @default(0)
-
+ 
   // Relasyon ak Atis la (Profile)
+  plays     Play[]   // Relasyon ak tab Play la
+  playCount   Int      @default(0) // Yon kontè rapid pou pèfòmans
   artistId  String
   artist    Profile    @relation(fields: [artistId], references: [id], onDelete: Cascade)
   playlists Playlist[] @relation("PlaylistTracks")
@@ -109,4 +110,16 @@ model Playlist {
   updatedAt DateTime @updatedAt
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
+}
+
+
+model Play {
+  id        String   @id @default(uuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId    String?  // Nullable si moun nan pa konekte
+  userIp    String?  // Pou nou detekte spam menm san login
+  createdAt DateTime @default(now())
+
+  @@index([trackId, createdAt])
 }
