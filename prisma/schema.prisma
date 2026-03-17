@@ -60,12 +60,12 @@ model Track {
   audioUrl String // URL ki soti nan Supabase Storage (bucket: tracks)
   coverUrl String? // Foto kouvèti chante a
   duration Float? // Pou n konnen longè mizik la
- 
+
   // Relasyon ak Atis la (Profile)
-  plays     Play[]   // Relasyon ak tab Play la
-  playCount   Int      @default(0) // Yon kontè rapid pou pèfòmans
+  plays     Play[] // Relasyon ak tab Play la
+  playCount Int        @default(0) // Yon kontè rapid pou pèfòmans
   albumId   String?
-  album     Album?    @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  album     Album?     @relation(fields: [albumId], references: [id], onDelete: SetNull)
   artistId  String
   artist    Profile    @relation(fields: [artistId], references: [id], onDelete: Cascade)
   playlists Playlist[] @relation("PlaylistTracks")
@@ -87,12 +87,20 @@ enum UserRole {
 model Like {
   id        String   @id @default(uuid())
   userId    String
-  trackId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Mete "?" pou yo ka opsyonèl
+  trackId   String?  
+  track     Track?   @relation(fields: [trackId], references: [id])
+  
+  albumId   String?  
+  album     Album?   @relation(fields: [albumId], references: [id])
+
   createdAt DateTime @default(now())
 
+  // Index sa yo enpòtan pou pèfòmans ak sekirite
   @@unique([userId, trackId])
+  @@unique([userId, albumId])
 }
 
 model Playlist {
@@ -115,37 +123,35 @@ model Playlist {
   profileId String?
 }
 
-
 model Play {
   id        String   @id @default(uuid())
   trackId   String
   track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  userId    String?  // Nullable si moun nan pa konekte
-  userIp    String?  // Pou nou detekte spam menm san login
+  userId    String? // Nullable si moun nan pa konekte
+  userIp    String? // Pou nou detekte spam menm san login
   createdAt DateTime @default(now())
 
   @@index([trackId, createdAt])
 }
 
-
-
 model Album {
-  id           String   @id @default(uuid())
-  title        String
-  description  String?
-  coverUrl     String?
-  genre        String?
-  
-  // Jesyon Piblikasyon
-  releaseDate  DateTime @default(now()) // Dat atis la chwazi a
-  isPublished  Boolean  @default(false) // De defo, li kache
-  
-  artistId     String
-  artist       Profile  @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  tracks       Track[]
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  coverUrl    String?
+  genre       String?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  // Jesyon Piblikasyon
+  releaseDate DateTime @default(now()) // Dat atis la chwazi a
+  isPublished Boolean  @default(false) // De defo, li kache
+
+  artistId String
+  artist   Profile @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tracks   Track[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  likes     Like[]
 
   @@index([artistId])
   @@index([releaseDate, isPublished]) // Pou rechèch rapid le n ap verifye dat yo

@@ -81,7 +81,6 @@ export class AlbumService {
             // Si atis la voye yon foto espesyal pou track sa a, nou upload li
             finalCoverUrl = await this.supabaseService.uploadFile(trackCoverFile, 'tracks/covers');
         }
-        console.log(album)
 
         // 3. Kreye Track la
         return this.prisma.track.create({
@@ -97,6 +96,24 @@ export class AlbumService {
         });
     }
 
+     /**
+   * 5. JWENN TOUT ALBUM YON ATIS (POU PWOFIL LA)
+   */
+    async getAlbums() {
+        return this.prisma.album.findMany({
+            orderBy: {
+                createdAt: 'desc' // Pou dènye album yo parèt an premye
+            },
+            include: {
+                artist:true,
+                tracks:true,
+                _count: {
+                    select: { tracks: true } 
+                }
+            }
+        });
+    }
+
     /**
    * 5. JWENN TOUT ALBUM YON ATIS (POU PWOFIL LA)
    */
@@ -109,6 +126,7 @@ export class AlbumService {
                 createdAt: 'desc' // Pou dènye album yo parèt an premye
             },
             include: {
+                artist:true,
                 _count: {
                     select: { tracks: true } // Sa ap bay "trackCount" nan frontend lan
                 }

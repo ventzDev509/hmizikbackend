@@ -86,6 +86,13 @@ export class AlbumController {
     async getUserAlbums(@Param('userId') userId: string) {
         return this.albumService.getAlbumsByUser(userId);
     }
+    /**
+     * GET /album/user/:userId
+     */
+    @Get('')
+    async getAlbums() {
+        return this.albumService.getAlbums();
+    }
 
     /**
      * 4. JWENN ALBUM NAN AK TOUT TRACKS LI YO
