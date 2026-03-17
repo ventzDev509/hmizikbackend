@@ -48,6 +48,7 @@ model Profile {
   // NOUVO: Yon atis ka gen plizyè tracks
   tracks    Track[]
   playlists Playlist[]
+  albums    Album[]
   updatedAt DateTime   @updatedAt
 }
 
@@ -63,6 +64,8 @@ model Track {
   // Relasyon ak Atis la (Profile)
   plays     Play[]   // Relasyon ak tab Play la
   playCount   Int      @default(0) // Yon kontè rapid pou pèfòmans
+  albumId   String?
+  album     Album?    @relation(fields: [albumId], references: [id], onDelete: SetNull)
   artistId  String
   artist    Profile    @relation(fields: [artistId], references: [id], onDelete: Cascade)
   playlists Playlist[] @relation("PlaylistTracks")
@@ -122,4 +125,28 @@ model Play {
   createdAt DateTime @default(now())
 
   @@index([trackId, createdAt])
+}
+
+
+
+model Album {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  coverUrl     String?
+  genre        String?
+  
+  // Jesyon Piblikasyon
+  releaseDate  DateTime @default(now()) // Dat atis la chwazi a
+  isPublished  Boolean  @default(false) // De defo, li kache
+  
+  artistId     String
+  artist       Profile  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tracks       Track[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([artistId])
+  @@index([releaseDate, isPublished]) // Pou rechèch rapid le n ap verifye dat yo
 }

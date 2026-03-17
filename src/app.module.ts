@@ -10,10 +10,13 @@ import { TracksModule } from './tracks/tracks.module';
 import { SupabaseModule } from './common/supabase.module';
 import { LikesModule } from './likes/likes.module';
 import { PlaylistModule } from './playlist/playlist.module';
+import { AlbumModule } from './album/album.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { PublishService } from './album/publish.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot()],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,PublishService],
 })
 export class AppModule {}
