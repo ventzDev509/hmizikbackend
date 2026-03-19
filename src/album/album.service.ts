@@ -96,6 +96,94 @@ export class AlbumService {
         });
     }
 
+
+
+
+
+
+    /**
+     * 3. MODIFYE ALBUM (TIT, COVER, GENRE)
+     * Fonksyon sa a ap pèmèt mèt album nan chanje enfòmasyon yo
+     */
+    async updateAlbum(
+        albumId: string, 
+        data: { title?: string; genre?: string; description?: string },
+        file?: Express.Multer.File
+    ) {
+        const album = await this.prisma.album.findUnique({ where: { id: albumId } });
+        if (!album) throw new NotFoundException('Album pa jwenn');
+
+        let coverUrl = album.coverUrl;
+
+        // Si itilizatè a voye yon nouvo foto, nou upload li
+        if (file) {
+            coverUrl = await this.supabaseService.uploadFile(file, 'covers');
+        }
+
+        return this.prisma.album.update({
+            where: { id: albumId },
+            data: {
+                ...data,
+                coverUrl,
+                updatedAt: new Date(),
+            },
+            include: { artist: true, tracks: true }
+        });
+    }
+
+    /**
+     * 4. EFASE YON MIZIK NAN ALBUM NAN
+     * Sa a enpòtan pou bouton "Trash" ou a nan edit mode la
+     */
+    async deleteTrack(trackId: string) {
+        const track = await this.prisma.track.findUnique({ where: { id: trackId } });
+        if (!track) throw new NotFoundException('Mizik sa a pa egziste');
+
+        // Opsyonèl: Ou ka efase file audio a nan Supabase tou isit la
+        // await this.supabaseService.deleteFile(track.audioUrl);
+
+        return this.prisma.track.delete({
+            where: { id: trackId }
+        });
+    }
+
+    /**
+     * 5. EFASE YON ALBUM NÈT
+     */
+    async deleteAlbum(albumId: string) {
+        const album = await this.prisma.album.findUnique({ 
+            where: { id: albumId },
+            include: { tracks: true }
+        });
+        
+        if (!album) throw new NotFoundException('Album pa jwenn');
+
+        // Nou efase tout tracks ki lye ak album nan anvan (Prisma Cascade ka fè sa tou)
+        await this.prisma.track.deleteMany({ where: { albumId } });
+
+        return this.prisma.album.delete({ where: { id: albumId } });
+    }
+
+    /**
+     * 6. FINALIZASYON (Mizajou pou pibliye l)
+     */
+    async finalizeAlbum(albumId: string) {
+        const trackCount = await this.prisma.track.count({ where: { albumId } });
+        if (trackCount === 0) throw new BadRequestException('Album sa a pa gen mizik ladan l');
+
+        return this.prisma.album.update({
+            where: { id: albumId },
+            data: { 
+                isPublished: true, // Nou mete l pibliye
+                updatedAt: new Date() 
+            },
+            include: { tracks: true }
+        });
+    }
+
+
+
+
      /**
    * 5. JWENN TOUT ALBUM YON ATIS (POU PWOFIL LA)
    */
@@ -134,19 +222,6 @@ export class AlbumService {
         });
     }
 
-    /**
-     * 3. FINALIZASYON
-     */
-    async finalizeAlbum(albumId: string) {
-        const trackCount = await this.prisma.track.count({ where: { albumId } });
-        if (trackCount === 0) throw new BadRequestException('Album sa a pa gen mizik ladan l');
-
-        return this.prisma.album.update({
-            where: { id: albumId },
-            data: { updatedAt: new Date() },
-            include: { tracks: true }
-        });
-    }
 
     /**
    * JWENN YON ALBUM AK TOUT TRACKS LI YO

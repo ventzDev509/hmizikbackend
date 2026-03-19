@@ -10,7 +10,8 @@ import {
     UploadedFiles,
     UseInterceptors,
     HttpException,
-    HttpStatus
+    HttpStatus,
+    Delete
 } from '@nestjs/common';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AlbumService } from './album.service';
@@ -35,6 +36,36 @@ export class AlbumController {
             console.log(error)
             throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+
+    // Jwenn yon album pa ID (Se sa useAlbum getAlbum rele)
+    @Get(':id')
+    async getOne(@Param('id') id: string) {
+        return this.albumService.getAlbumWithTracks(id);
+    }
+
+    // Modifye album (Tit / Cover)
+    @Patch(':id')
+    @UseInterceptors(FileInterceptor('cover'))
+    async update(
+        @Param('id') id: string,
+        @Body() body: any,
+        @UploadedFile() file: Express.Multer.File
+    ) {
+        return this.albumService.updateAlbum(id, body, file);
+    }
+
+    // Efase yon mizik
+    @Delete('tracks/:trackId')
+    async removeTrack(@Param('trackId') trackId: string) {
+        return this.albumService.deleteTrack(trackId);
+    }
+
+    // Finalize
+    @Post(':id/finalize')
+    async finalize(@Param('id') id: string) {
+        return this.albumService.finalizeAlbum(id);
     }
 
     /**
@@ -66,18 +97,6 @@ export class AlbumController {
         }
     }
 
-    /**
-     * 3. FINALIZE ALBUM
-     * PATCH /album/:id/finalize
-     */
-    @Patch(':id/finalize')
-    async finalize(@Param('id') id: string) {
-        try {
-            return await this.albumService.finalizeAlbum(id);
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
 
     /**
      * GET /album/user/:userId
