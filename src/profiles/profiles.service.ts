@@ -5,14 +5,24 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class ProfilesService {
-    constructor(private prisma: PrismaService,private supabaseService: SupabaseService,) { }
+    constructor(private prisma: PrismaService, private supabaseService: SupabaseService,) { }
 
-    // Jwenn pwofil pa ID itilizatè (pou edit)
     async getMyProfile(userId: string) {
         const profile = await this.prisma.profile.findUnique({
             where: { userId },
-            include: { user: { select: {id:true, name: true, email: true } } },
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                tracks: {
+                    take: 10, 
+                    orderBy: { createdAt: 'desc' }, 
+                }, 
+                _count: {
+                    select: { tracks: true } 
+
+                }
+            },
         });
+
         if (!profile) throw new NotFoundException('Profile not found');
         return profile;
     }
@@ -52,5 +62,55 @@ export class ProfilesService {
             data: updateData,
             include: { user: true }
         });
+    }
+
+    async getAllProfiles(onlyArtists: boolean = false) {
+        const profiles = await this.prisma.profile.findMany({
+            where: onlyArtists ? { isArtist: true } : {},
+            include: {
+                user: {
+                    select: { name: true }
+
+                },
+                tracks: true
+            },
+            orderBy: {
+                username: 'asc'
+            }
+        });
+
+        // Nou vlope l pou l match ak interface Frontend lan
+        return {
+            data: profiles,
+            meta: {
+                total: profiles.length,
+                page: 1,
+                lastPage: 1
+            }
+        };
+    }
+
+    // Si w vle yon vèsyon ki gen "Pagination" (pwofesyonèl)
+    async getPaginatedProfiles(page: number = 1, limit: number = 10) {
+        const skip = (page - 1) * limit;
+
+        const [profiles, total] = await Promise.all([
+            this.prisma.profile.findMany({
+
+                take: limit,
+                skip: skip,
+                include: { user: { select: { name: true } } },
+            }),
+            this.prisma.profile.count()
+        ]);
+
+        return {
+            data: profiles,
+            meta: {
+                total,
+                page,
+                lastPage: Math.ceil(total / limit)
+            }
+        };
     }
 }
