@@ -14,9 +14,10 @@ import { AlbumModule } from './album/album.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PublishService } from './album/publish.service';
 import { SearchModule } from './search/search.module';
+import { FollowModule } from './follow/follow.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule, FollowModule],
   controllers: [AppController],
   providers: [AppService,PublishService],
 })

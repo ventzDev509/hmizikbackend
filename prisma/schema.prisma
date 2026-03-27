@@ -42,9 +42,12 @@ model Profile {
   socialLinks Json? @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
 
   // Relasyon User
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  followers Follow[] @relation("Following")
 
+  // Atis pwofil sa a ap swiv
+  following Follow[]   @relation("Follower")
   // NOUVO: Yon atis ka gen plizyè tracks
   tracks    Track[]
   playlists Playlist[]
@@ -85,16 +88,16 @@ enum UserRole {
 }
 
 model Like {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
   // Mete "?" pou yo ka opsyonèl
-  trackId   String?  
-  track     Track?   @relation(fields: [trackId], references: [id])
-  
-  albumId   String?  
-  album     Album?   @relation(fields: [albumId], references: [id])
+  trackId String?
+  track   Track?  @relation(fields: [trackId], references: [id])
+
+  albumId String?
+  album   Album?  @relation(fields: [albumId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -155,4 +158,16 @@ model Album {
 
   @@index([artistId])
   @@index([releaseDate, isPublished]) // Pou rechèch rapid le n ap verifye dat yo
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String // Moun k ap klike abòne a
+  followingId String // Atis y ap swiv la
+  createdAt   DateTime @default(now())
+
+  follower  Profile @relation("Follower", fields: [followerId], references: [id])
+  following Profile @relation("Following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId]) // Yon moun pa ka swiv yon atis 2 fwa
 }
