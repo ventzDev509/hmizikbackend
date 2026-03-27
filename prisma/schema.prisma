@@ -19,14 +19,18 @@ model User {
   confirmationToken    String?
   role                 UserRole  @default(CUSTOMER)
   resetPasswordToken   String?   @unique
+  pushToken            String?
   resetPasswordExpires DateTime?
   provider             String    @default("local")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  profile   Profile?
-  likes     Like[]
-  playlists Playlist[]
+  // receivedNotifications Notification[] @relation("ReceivedNotifications")
+  sentNotifications     Notification[] @relation("SentNotifications")
+  notifications         Notification[] @relation("ReceivedNotifications")
+  profile               Profile?
+  likes                 Like[]
+  playlists             Playlist[]
 }
 
 // 2. Modèl Profile
@@ -171,4 +175,20 @@ model Follow {
   following Profile @relation("Following", fields: [followingId], references: [id])
 
   @@unique([followerId, followingId]) // Yon moun pa ka swiv yon atis 2 fwa
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  recipientId String
+  senderId    String // ID moun ki fè aksyon an
+  type        String
+  relatedId   String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relasyon pou moun k ap resevwa a
+  recipient User @relation("ReceivedNotifications", fields: [recipientId], references: [id])
+
+  // AJOUTE LIY SA A: Relasyon pou moun ki voye a
+  sender User @relation("SentNotifications", fields: [senderId], references: [id])
 }

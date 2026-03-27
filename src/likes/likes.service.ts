@@ -1,27 +1,37 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class LikesService {
-    constructor(private prisma: PrismaService) { }
-
-    // A. LIKE OSWA UNLIKE (TOGGLE) - Jere Track ak Album
-    // likes.service.ts
+    constructor(
+        private prisma: PrismaService,
+        private notificationService: NotificationService // 2. Enjekte sèvis la
+    ) { }
 
     async toggleLike(userId: string, targetId: string, type: 'track' | 'album' = 'track') {
         try {
-            // 1. VERIFIKASYON EXISTANS
+            let recipientId: string | null = null;
+
             if (type === 'track') {
-                const track = await this.prisma.track.findUnique({ where: { id: targetId } });
+                const track = await this.prisma.track.findUnique({
+                    where: { id: targetId },
+                    include: { artist: true } // Nou include artist pou n ka jwenn userId a
+                });
                 if (!track) throw new NotFoundException("Mizik pa egziste.");
+
+                // Isit la, tcheke si se track.artist.userId oswa track.userId
+                recipientId = track.artist?.userId || (track as any).userId;
             } else {
                 const album = await this.prisma.album.findUnique({
-                    where: { id: targetId }
+                    where: { id: targetId },
+                    include: { artist: true }
                 });
                 if (!album) throw new NotFoundException("Album pa egziste.");
+                recipientId = album.artist?.userId || (album as any).userId;
             }
 
-            // 2. CHÈCHE LIKE LA
+            // ... rès lojik Like/Unlike la ...
             const existingLike = await this.prisma.like.findFirst({
                 where: {
                     userId: userId,
@@ -32,9 +42,8 @@ export class LikesService {
 
             if (existingLike) {
                 await this.prisma.like.delete({ where: { id: existingLike.id } });
-                return { liked: false, message: "Retire nan favorites." };
+                return { liked: false, message: "Retire." };
             } else {
-                // 3. KREYE LIKE LA
                 await this.prisma.like.create({
                     data: {
                         userId: userId,
@@ -42,10 +51,19 @@ export class LikesService {
                         albumId: type === 'album' ? targetId : null,
                     },
                 });
-                return { liked: true, message: "Ajoute nan favorites." };
+
+                // VOYE NOTIFIKASYON
+                if (recipientId && recipientId !== userId) {
+                    await this.notificationService.createNotification({
+                        recipientId: recipientId,
+                        senderId: userId,
+                        type: type === 'track' ? 'LIKE_TRACK' : 'LIKE_ALBUM',
+                        relatedId: targetId,
+                    });
+                }
+                return { liked: true, message: "Ajoute." };
             }
         } catch (error) {
-            console.error("Erè nan toggleLike:", error);
             throw error;
         }
     }

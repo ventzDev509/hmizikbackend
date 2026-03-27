@@ -15,9 +15,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { PublishService } from './album/publish.service';
 import { SearchModule } from './search/search.module';
 import { FollowModule } from './follow/follow.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule, FollowModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule, FollowModule, NotificationModule],
   controllers: [AppController],
   providers: [AppService,PublishService],
 })
