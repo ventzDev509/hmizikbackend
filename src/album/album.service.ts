@@ -1,5 +1,5 @@
 // src/album/album.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
 
@@ -106,7 +106,7 @@ export class AlbumService {
      * Fonksyon sa a ap pèmèt mèt album nan chanje enfòmasyon yo
      */
     async updateAlbum(
-        albumId: string, 
+        albumId: string,
         data: { title?: string; genre?: string; description?: string },
         file?: Express.Multer.File
     ) {
@@ -147,21 +147,77 @@ export class AlbumService {
         });
     }
 
+
     /**
-     * 5. EFASE YON ALBUM NÈT
+     * EFASE YON ALBUM NÈT (Storage + Database)
      */
-    async deleteAlbum(albumId: string) {
-        const album = await this.prisma.album.findUnique({ 
+    async deleteAlbum(albumId: string, userId: string) {
+        // 1. Jwenn album nan ak tout tracks li yo
+        const album = await this.prisma.album.findUnique({
             where: { id: albumId },
             include: { tracks: true }
         });
-        
-        if (!album) throw new NotFoundException('Album pa jwenn');
 
-        // Nou efase tout tracks ki lye ak album nan anvan (Prisma Cascade ka fè sa tou)
-        await this.prisma.track.deleteMany({ where: { albumId } });
+        if (!album) throw new NotFoundException('Album sa a pa egziste');
 
-        return this.prisma.album.delete({ where: { id: albumId } });
+        // 2. Sekirite: Verifye si se mèt la k ap efase l
+        const profile = await this.prisma.profile.findUnique({ where: { userId } });
+        if (!profile || album.artistId !== profile.id) {
+            throw new ForbiddenException("Ou pa gen dwa efase album sa a.");
+        }
+
+        try {
+            const BUCKET_NAME = 'hmizik';
+
+            // 3. Prepare lis tout fichye pou n efase (Audio + Covers)
+            const rawFiles = album.tracks.flatMap(track => [
+                this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME),
+                // Nou efase cover track la sèlman si l diferan de cover album nan
+                track.coverUrl !== album.coverUrl ? this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME) : null
+            ]);
+
+            // Ajoute cover album nan tou nan lis la
+            rawFiles.push(this.getFilePathFromUrl(album.coverUrl, BUCKET_NAME));
+
+            // 4. Filtre tout 'null' yo pou TypeScript (Type Guard)
+            const filesToDelete: string[] = rawFiles.filter((path): path is string => path !== null);
+
+            // 5. EFASE SOU SUPABASE STORAGE
+            if (filesToDelete.length > 0) {
+                console.log(`H-MIZIK: Ap efase ${filesToDelete.length} fichye sou Storage...`);
+                // Aksè a kliyan supabase la depann de kijan SupabaseService ou a estriktire
+                // Si 'supabase' se yon pwopriyete piblik nan service la:
+                const { error: storageError } = await this.supabaseService['supabase'].storage
+                    .from(BUCKET_NAME)
+                    .remove(filesToDelete);
+
+                if (storageError) {
+                    console.error("Erè Storage Supabase:", storageError.message);
+                }
+            }
+
+            // 6. EFASE NAN DATABASE (Cascade Delete)
+            // Nou efase tracks yo an premye pou n asire nou pa gen kontrent
+            await this.prisma.track.deleteMany({ where: { albumId: albumId } });
+
+            return await this.prisma.album.delete({
+                where: { id: albumId }
+            });
+
+        } catch (error) {
+            console.error("Erè Efasman Album:", error);
+            throw new BadRequestException("Nou pa ka efase album nan: " + error.message);
+        }
+    }
+
+    /**
+     * Fonksyon Helper pou rale "path" la nan URL la
+     */
+    private getFilePathFromUrl(url: string | null, bucket: string = 'hmizik'): string | null {
+        if (!url) return null;
+        const marker = `${bucket}/`;
+        const parts = url.split(marker);
+        return parts.length > 1 ? parts[1] : null;
     }
 
     /**
@@ -173,9 +229,9 @@ export class AlbumService {
 
         return this.prisma.album.update({
             where: { id: albumId },
-            data: { 
+            data: {
                 isPublished: true, // Nou mete l pibliye
-                updatedAt: new Date() 
+                updatedAt: new Date()
             },
             include: { tracks: true }
         });
@@ -184,19 +240,19 @@ export class AlbumService {
 
 
 
-     /**
-   * 5. JWENN TOUT ALBUM YON ATIS (POU PWOFIL LA)
-   */
+    /**
+  * 5. JWENN TOUT ALBUM YON ATIS (POU PWOFIL LA)
+  */
     async getAlbums() {
         return this.prisma.album.findMany({
             orderBy: {
                 createdAt: 'desc' // Pou dènye album yo parèt an premye
             },
             include: {
-                artist:true,
-                tracks:true,
+                artist: true,
+                tracks: true,
                 _count: {
-                    select: { tracks: true } 
+                    select: { tracks: true }
                 }
             }
         });
@@ -214,7 +270,7 @@ export class AlbumService {
                 createdAt: 'desc' // Pou dènye album yo parèt an premye
             },
             include: {
-                artist:true,
+                artist: true,
                 _count: {
                     select: { tracks: true } // Sa ap bay "trackCount" nan frontend lan
                 }

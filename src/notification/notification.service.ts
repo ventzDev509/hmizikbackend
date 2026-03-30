@@ -40,11 +40,11 @@ export class NotificationService {
                 }
             };
 
+
             try {
                 await admin.messaging().send(message);
-                console.log('Push voye ak siksè!');
-            } catch (error) {
-                console.error('Erè nan voye Push:', error);
+            } catch (err) {
+                console.error("Firebase Push Error:", err);
             }
         }
 
@@ -94,9 +94,13 @@ export class NotificationService {
 
     // Nan NotificationService
     async updatePushToken(userId: string, token: string) {
-        return this.prisma.user.update({
-            where: { id: userId },
-            data: { pushToken: token },
-        });
+        try {
+            return this.prisma.user.update({
+                where: { id: userId },
+                data: { pushToken: token },
+            });
+        } catch (error) {
+            console.log(error)
+        }
     }
 }

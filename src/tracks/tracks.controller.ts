@@ -12,7 +12,8 @@ import {
     Patch,
     Request,
     UseGuards,
-    Req
+    Req,
+    ForbiddenException
 } from '@nestjs/common';
 import { TracksService } from './tracks.service';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -101,10 +102,16 @@ export class TracksController {
         return this.tracksService.update(req.user.id, id, updateData);
     }
 
-    // 7. SIPRIME MIZIK (Pwoteje)
+    // 3. SIPRIME YON MIZIK (Pwoteksyon ak JWT)
     @UseGuards(JwtAuthGuard)
-    @Delete(':id')
-    async deleteTrack(@Request() req, @Param('id') id: string) {
-        return this.tracksService.remove(req.user.id, id);
+    @Delete('remove/:id')
+    async remove(@Param('id') id: string, @Req() req) {
+        const userId = req.user.id;
+
+        if (!userId) {
+            throw new ForbiddenException("Ou dwe konekte pou w efase yon mizik.");
+        }
+
+        return this.tracksService.remove(userId, id);
     }
 }

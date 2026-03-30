@@ -11,10 +11,13 @@ import {
     UseInterceptors,
     HttpException,
     HttpStatus,
-    Delete
+    Delete,
+    UseGuards,
+    Req
 } from '@nestjs/common';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AlbumService } from './album.service';
+import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 
 @Controller('album')
 export class AlbumController {
@@ -57,9 +60,10 @@ export class AlbumController {
     }
 
     // Efase yon mizik
-    @Delete('tracks/:trackId')
-    async removeTrack(@Param('trackId') trackId: string) {
-        return this.albumService.deleteTrack(trackId);
+    @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    async remove(@Param('id') id: string, @Req() req) {
+        return this.albumService.deleteAlbum(id, req.user.id);
     }
 
     // Finalize

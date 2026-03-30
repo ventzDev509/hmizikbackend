@@ -1,13 +1,22 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
 import { Prisma } from '@prisma/client';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 @Injectable()
 export class TracksService {
+    private supabase: SupabaseClient;
     constructor(
         private prisma: PrismaService,
         private supabaseService: SupabaseService,
-    ) { }
+
+    ) {
+
+        this.supabase = createClient(
+            process.env.SUPABASE_URL || "",
+            process.env.SUPABASE_ANON_KEY || ""
+        );
+    }
 
     // 1. KREYE YON TRACK (UPLOAD)
     async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
@@ -206,18 +215,79 @@ export class TracksService {
         });
     }
 
-    // 7. SIPRIME YON TRACK
-    async remove(userId: string, id: string) {
-        const track = await this.findOne(id);
-        const profile = await this.prisma.profile.findUnique({ where: { userId } });
 
-        if (track.artistId !== profile?.id) {
-            throw new ForbiddenException("Ou pa gen dwa siprime mizik sa a.");
+
+    // Nan yon SupabaseService oswa dirèkteman nan TrackService la
+    async deleteFileFromStorage(fileUrl: string, bucketName: string) {
+
+        const filePath = fileUrl.split(`${bucketName}/`)[1];
+
+        if (!filePath) return;
+
+        const { data, error } = await this.supabase.storage
+            .from(bucketName)
+            .remove([filePath]);
+
+
+        if (error) {
+            console.error(`Erè lè n ap efase nan ${bucketName}:`, error.message);
+        }
+        return data;
+    }
+
+    // Fonksyon pou rale "path" la nan URL Supabase la
+    private getFilePathFromUrl(url: string, bucket: string) {
+        // Sa ap rale tout sa ki apre non bucket la nan URL la
+        const parts = url.split(`${bucket}/`);
+       
+        return parts.length > 1 ? parts[1] : null;
+    }
+
+  async remove(userId: string, id: string) {
+    const track = await this.prisma.track.findUnique({ where: { id } });
+    const profile = await this.prisma.profile.findUnique({ where: { userId } });
+
+    if (!track || track.artistId !== profile?.id) {
+        throw new ForbiddenException("Ou pa gen dwa oswa mizik sa a pa egziste.");
+    }
+
+    try {
+        // 1. Netwaye Likes/Playlists (Kòd ou a te bon la)
+        await this.prisma.like.deleteMany({ where: { trackId: id } });
+
+        // 2. EFASE SOU SUPABASE (Nou sèvi ak bucket 'hmizik' la)
+        const BUCKET_NAME = 'hmizik'; // Non ki nan URL ou a
+
+        // Efase Audio
+        if (track.audioUrl) {
+            const audioPath = this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME);
+            if (audioPath) {
+                const { data, error } = await this.supabase.storage
+                    .from(BUCKET_NAME)
+                    .remove([audioPath]);
+                console.log("Supabase Audio Delete:", data, error);
+            }
         }
 
-        // Nòmalman ou ta dwe siprime fichye yo sou Supabase tou isit la
-        // await this.supabaseService.deleteFile(track.audioUrl);
+        // Efase Cover
+        if (track.coverUrl) {
+            const coverPath = this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME);
+            if (coverPath) {
+                const { data, error } = await this.supabase.storage
+                    .from(BUCKET_NAME)
+                    .remove([coverPath]);
+                console.log("Supabase Cover Delete:", data, error);
+            }
+        }
 
+        // 3. Efase nan DB
         return await this.prisma.track.delete({ where: { id } });
+
+    } catch (error) {
+        console.error("Erè Efasman:", error);
+        throw new InternalServerErrorException("Efasman echwe: " + error.message);
     }
+}
+
+
 }

@@ -33,7 +33,6 @@ async function bootstrap() {
       fs.readFileSync(configPath, 'utf8')
     ) as ServiceAccount;
 
-   console.log('2. Nest App kreye!');
     if (!admin.apps.length) { 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
