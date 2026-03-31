@@ -4,7 +4,6 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Pake sa a pèmèt FFmpeg kouri sou Render oswa nenpòt lòt OS san enstalasyon manyèl
 const ffmpegPath = require('ffmpeg-static');
 import ffmpeg = require('fluent-ffmpeg');
 
@@ -18,17 +17,22 @@ export class SupabaseService {
     constructor() {
         const url = process.env.SUPABASE_URL;
         const key = process.env.SUPABASE_ANON_KEY;
-
-        if (!url || !key) {
-            throw new Error("Koneksyon Supabase echwe: URL oswa KEY manke nan .env");
-        }
-
+        if (!url || !key) throw new Error("Koneksyon Supabase echwe: URL oswa KEY manke");
         this.supabase = createClient(url, key);
     }
 
     /**
-     * Lojik konpresyon an an MP3 128kbps
+     * 🔥 NOUVO: Netwaye non fichye a nèt pou Supabase pa bay erè
      */
+    private sanitizeFileName(fileName: string): string {
+        return fileName
+            .normalize('NFD')                     // Separe aksan ak lèt (è -> e + `)
+            .replace(/[\u0300-\u036f]/g, '')     // Retire aksan yo
+            .replace(/[^a-zA-Z0-9.\-_]/g, '_')    // Ranplase tout sa ki pa lèt/chif/pwen pa _
+            .replace(/_{2,}/g, '_')               // Evite double underscore (__)
+            .toLowerCase();                       // Tout an miniskil pou sekirite
+    }
+
     private async compressAudio(file: Express.Multer.File): Promise<Buffer> {
         const tempDir = path.join(process.cwd(), 'temp-uploads');
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -45,11 +49,8 @@ export class SupabaseService {
                 .on('end', () => {
                     try {
                         const compressedBuffer = fs.readFileSync(tempOutput);
-                        
-                        // Netwaye fichye yo imedyatman
                         if (fs.existsSync(tempInput)) fs.unlinkSync(tempInput);
                         if (fs.existsSync(tempOutput)) fs.unlinkSync(tempOutput);
-                        
                         resolve(compressedBuffer);
                     } catch (readError) {
                         reject(readError);
@@ -64,57 +65,51 @@ export class SupabaseService {
         });
     }
 
-    /**
-     * Upload prensipal
-     */
     async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
-        // Nou kòmanse ak done orijinal yo
         let bufferToUpload = file.buffer;
         let finalMimeType = file.mimetype;
-        const cleanName = file.originalname.replace(/\s+/g, '_');
-        let fileName = `${folder}/${Date.now()}-${cleanName}`;
-
-        // Chèk si se yon audio pou n konprese l
+        
+        // 1. Netwaye non an anvan nou fè anyen
+        let cleanName = this.sanitizeFileName(file.originalname);
+        
         if (file.mimetype.startsWith('audio/')) {
-            console.log(`\x1b[33m[SupabaseService] Pwosesis konpresyon ap kòmanse pou: ${file.originalname}\x1b[0m`);
+            console.log(`\x1b[33m[SupabaseService] Konpresyon: ${file.originalname}\x1b[0m`);
             
             try {
                 const oldSize = (file.buffer.length / (1024 * 1024)).toFixed(2);
-                
-                // RANPLASE BUFFER A AK SA KI KONPRESE A
                 bufferToUpload = await this.compressAudio(file);
-                
                 const newSize = (bufferToUpload.length / (1024 * 1024)).toFixed(2);
+                
                 finalMimeType = 'audio/mpeg';
-                fileName = fileName.replace(/\.[^/.]+$/, "") + ".mp3";
+                
+                // 2. Ranje extension an pwòp (retire ansyen an, mete .mp3)
+                const nameWithoutExt = cleanName.substring(0, cleanName.lastIndexOf('.')) || cleanName;
+                cleanName = `${nameWithoutExt}.mp3`;
 
-                console.log(`\x1b[32m[Siksè] Audio konprese! Old size: ${oldSize}MB -> New size: ${newSize}MB\x1b[0m`);
+                console.log(`\x1b[32m[Siksè] ${oldSize}MB -> ${newSize}MB\x1b[0m`);
             } catch (err) {
-                console.log(`\x1b[31m[Echèk] Konpresyon pa t mache, n ap voye orijinal la. Erè: ${err.message}\x1b[0m`);
-                // bufferToUpload rete file.buffer (sa k te deklare anlè a)
+                console.log(`\x1b[31m[Echèk] Konpresyon echwe, n ap voye orijinal: ${err.message}\x1b[0m`);
             }
-        } else {
-            console.log(`\x1b[34m[Info] Fichye sa a se pa audio (image/etc), n ap voye l san chanjman.\x1b[0m`);
         }
 
-        // Upload sou Supabase ak buffer final la
+        const fileKey = `${folder}/${Date.now()}-${cleanName}`;
+
         const { data, error } = await this.supabase.storage
             .from('hmizik')
-            .upload(fileName, bufferToUpload, {
+            .upload(fileKey, bufferToUpload, {
                 contentType: finalMimeType,
                 upsert: true
             });
 
         if (error) {
-            console.error(`\x1b[31m[Supabase Error] Upload echwe: ${error.message}\x1b[0m`);
+            console.error(`\x1b[31m[Supabase Error] Invalid Key Error nan: ${fileKey}\x1b[0m`);
             throw new Error(`Supabase error: ${error.message}`);
         }
 
         const { data: publicUrl } = this.supabase.storage
             .from('hmizik')
-            .getPublicUrl(fileName);
+            .getPublicUrl(fileKey);
 
-        console.log(`\x1b[36m[Done] Upload fini: ${publicUrl.publicUrl}\x1b[0m`);
         return publicUrl.publicUrl;
     }
 }
