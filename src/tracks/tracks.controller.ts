@@ -62,16 +62,25 @@ export class TracksController {
     @Post(':id/play')
     async incrementPlay(
         @Param('id') id: string,
-        @Req() req: any // Nou itilize 'any' isit la pou evite erè tip yo
+        @Req() req: any
     ) {
-        // Nou tcheke plizyè sous pou IP a (itil anpil lè w an pwodiksyon)
-        const ip = req.headers['x-forwarded-for'] ||
+        // 1. Rekipere valè brut la
+        const rawIp = req.headers['x-forwarded-for'] ||
             req.ip ||
             req.connection?.remoteAddress ||
             req.socket?.remoteAddress;
-            console.log(ip)
 
-        // Si w gen AuthGuard, userId ap disponib nan req.user
+        // 2. Netwaye IP a (Pran sèlman premye a si gen vigil, epi retire prefiks IPv6 la)
+        let ip = '';
+        if (typeof rawIp === 'string') {
+            // Si gen vigil, nou pran premye eleman an
+            ip = rawIp.split(',')[0].trim();
+            // Retire prefiks ::ffff: ki konn parèt sou sèvè Node
+            ip = ip.replace(/^.*:/, '');
+        }
+
+        console.log("Vrè IP k ap teste a:", ip); // W ap wè "200.113.230.158" sèlman kounye a
+
         const userId = req.user?.id;
 
         return this.tracksService.incrementPlays(id, userId, ip);
