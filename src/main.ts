@@ -24,7 +24,7 @@ async function bootstrap() {
 
   try {
   const configPath = join(process.cwd(), 'firebase-adminsdk.json');
-    // Verifikasyon si fichye a la tout bon vre
+    
     if (!fs.existsSync(configPath)) {
       throw new Error(`Fichye Firebase la manke nan: ${configPath}`);
     }

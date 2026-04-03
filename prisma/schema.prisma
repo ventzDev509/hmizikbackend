@@ -25,26 +25,26 @@ model User {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  // receivedNotifications Notification[] @relation("ReceivedNotifications")
-  sentNotifications     Notification[] @relation("SentNotifications")
-  notifications         Notification[] @relation("ReceivedNotifications")
-  profile               Profile?
-  likes                 Like[]
-  playlists             Playlist[]
+  sentNotifications Notification[] @relation("SentNotifications")
+  notifications     Notification[] @relation("ReceivedNotifications")
+  profile           Profile?
+  likes             Like[]
+  playlists         Playlist[]
 }
 
 // 2. Modèl Profile
 model Profile {
-  id        String  @id @default(uuid())
-  username  String? @unique
-  avatarUrl String?
-  bannerUrl String?
-  bio       String? @db.Text
-  location  String?
-  isArtist  Boolean @default(false)
-  verified  Boolean @default(false)
-
-  socialLinks Json? @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
+  id              String  @id @default(uuid())
+  username        String? @unique
+  avatarUrl       String?
+  bannerUrl       String?
+  bio             String? @db.Text
+  location        String?
+  isArtist        Boolean @default(false)
+  verified        Boolean @default(false)
+  customTarif     Float   @default(0.20)
+  payoutThreshold Float   @default(2500)
+  socialLinks     Json?   @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
 
   // Relasyon User
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -65,7 +65,7 @@ model Track {
   id       String  @id @default(uuid())
   title    String
   genre    String?
-  audioUrl String // URL ki soti nan Supabase Storage (bucket: tracks)
+  audioUrl String
   coverUrl String? // Foto kouvèti chante a
   duration Float? // Pou n konnen longè mizik la
 
@@ -135,8 +135,9 @@ model Play {
   id        String   @id @default(uuid())
   trackId   String
   track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  userId    String? // Nullable si moun nan pa konekte
-  userIp    String? // Pou nou detekte spam menm san login
+  userId    String?
+  userIp    String?
+  city      String   @default("Lòt bò dlo")
   createdAt DateTime @default(now())
 
   @@index([trackId, createdAt])

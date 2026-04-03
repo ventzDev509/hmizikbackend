@@ -53,8 +53,7 @@ export class TracksService {
         }
     }
 
-    // 2. JWENN TOUT TRACK YO (AK PAGINATION POU INFINITE SCROLL)
-    // limit: kantite done pou l pote, cursor: pwen kote l ap kòmanse a
+   
     async findAll(limit: number = 10, page: number = 1) {
         const skip = (page - 1) * limit;
 
@@ -65,7 +64,7 @@ export class TracksService {
                 orderBy: { createdAt: 'desc' },
                 include: {
                     artist: {
-                        select: { username: true, user: { select: { name: true } } }
+                        select: { username: true, user: { select: { name: true, } } }
                     }
                 }
             }),
@@ -115,9 +114,11 @@ export class TracksService {
                         select: {
                             username: true,
                             avatarUrl: true,
-                            user: { select: { name: true } }
+                            user: { select: { name: true ,profile:{select:{customTarif:true,payoutThreshold:true}}} }
                         }
                     }
+                    ,
+                    plays: true
                 }
             }),
             this.prisma.track.count({ where: { artistId: profile.id } })
@@ -149,13 +150,12 @@ export class TracksService {
 
     async incrementPlays(trackId: string, userId?: string, ip?: string) {
         const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-
-        // Nou di TypeScript array sa a se yon lis kondisyon 'Play'
         const orConditions: Prisma.PlayWhereInput[] = [];
 
         if (userId) orConditions.push({ userId });
         if (ip) orConditions.push({ userIp: ip });
 
+        // 1. Tcheke si moun nan te koute mizik sa a deja nan 30 minit ki sot pase yo
         const recentPlay = orConditions.length > 0
             ? await this.prisma.play.findFirst({
                 where: {
@@ -166,15 +166,45 @@ export class TracksService {
             })
             : null;
 
+        // 2. Si li te koute l deja, nou jis kreye "Play" la san ogmante "playCount" la (Spam)
         if (recentPlay) {
             return await this.prisma.play.create({
-                data: { trackId, userId, userIp: ip },
+                data: {
+                    trackId,
+                    userId,
+                    userIp: ip,
+                    city: recentPlay.city 
+                },
             });
         }
 
+        // 3. SI SE YON EKOUT VALIDE (Premye fwa nan 30 min):
+        // Nou rale vil la kounye a
+        let city = "Lòt bò dlo";
+        if (ip && ip !== '::1' && ip !== '127.0.0.1') {
+            try {
+                const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,city`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    city = data.city;
+                }
+            } catch (e) {
+                console.error("Lokalizasyon echwe, n ap itilize default");
+            }
+        } else {
+            // Pou tès ou yo nan Cap-Haitien
+            city = "Cap-Haïtien";
+        }
+
+        // 4. Nou fè tranzaksyon an: Sere Play la ak Vil la + Ogmante PlayCount la
         return await this.prisma.$transaction([
             this.prisma.play.create({
-                data: { trackId, userId, userIp: ip },
+                data: {
+                    trackId,
+                    userId,
+                    userIp: ip,
+                    city: city // Nou sere vil la isit la
+                },
             }),
             this.prisma.track.update({
                 where: { id: trackId },
@@ -239,55 +269,55 @@ export class TracksService {
     private getFilePathFromUrl(url: string, bucket: string) {
         // Sa ap rale tout sa ki apre non bucket la nan URL la
         const parts = url.split(`${bucket}/`);
-       
+
         return parts.length > 1 ? parts[1] : null;
     }
 
-  async remove(userId: string, id: string) {
-    const track = await this.prisma.track.findUnique({ where: { id } });
-    const profile = await this.prisma.profile.findUnique({ where: { userId } });
+    async remove(userId: string, id: string) {
+        const track = await this.prisma.track.findUnique({ where: { id } });
+        const profile = await this.prisma.profile.findUnique({ where: { userId } });
 
-    if (!track || track.artistId !== profile?.id) {
-        throw new ForbiddenException("Ou pa gen dwa oswa mizik sa a pa egziste.");
-    }
-
-    try {
-        // 1. Netwaye Likes/Playlists (Kòd ou a te bon la)
-        await this.prisma.like.deleteMany({ where: { trackId: id } });
-
-        // 2. EFASE SOU SUPABASE (Nou sèvi ak bucket 'hmizik' la)
-        const BUCKET_NAME = 'hmizik'; // Non ki nan URL ou a
-
-        // Efase Audio
-        if (track.audioUrl) {
-            const audioPath = this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME);
-            if (audioPath) {
-                const { data, error } = await this.supabase.storage
-                    .from(BUCKET_NAME)
-                    .remove([audioPath]);
-                console.log("Supabase Audio Delete:", data, error);
-            }
+        if (!track || track.artistId !== profile?.id) {
+            throw new ForbiddenException("Ou pa gen dwa oswa mizik sa a pa egziste.");
         }
 
-        // Efase Cover
-        if (track.coverUrl) {
-            const coverPath = this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME);
-            if (coverPath) {
-                const { data, error } = await this.supabase.storage
-                    .from(BUCKET_NAME)
-                    .remove([coverPath]);
-                console.log("Supabase Cover Delete:", data, error);
+        try {
+            // 1. Netwaye Likes/Playlists (Kòd ou a te bon la)
+            await this.prisma.like.deleteMany({ where: { trackId: id } });
+
+            // 2. EFASE SOU SUPABASE (Nou sèvi ak bucket 'hmizik' la)
+            const BUCKET_NAME = 'hmizik'; // Non ki nan URL ou a
+
+            // Efase Audio
+            if (track.audioUrl) {
+                const audioPath = this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME);
+                if (audioPath) {
+                    const { data, error } = await this.supabase.storage
+                        .from(BUCKET_NAME)
+                        .remove([audioPath]);
+                    console.log("Supabase Audio Delete:", data, error);
+                }
             }
+
+            // Efase Cover
+            if (track.coverUrl) {
+                const coverPath = this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME);
+                if (coverPath) {
+                    const { data, error } = await this.supabase.storage
+                        .from(BUCKET_NAME)
+                        .remove([coverPath]);
+                    console.log("Supabase Cover Delete:", data, error);
+                }
+            }
+
+            // 3. Efase nan DB
+            return await this.prisma.track.delete({ where: { id } });
+
+        } catch (error) {
+            console.error("Erè Efasman:", error);
+            throw new InternalServerErrorException("Efasman echwe: " + error.message);
         }
-
-        // 3. Efase nan DB
-        return await this.prisma.track.delete({ where: { id } });
-
-    } catch (error) {
-        console.error("Erè Efasman:", error);
-        throw new InternalServerErrorException("Efasman echwe: " + error.message);
     }
-}
 
 
 }

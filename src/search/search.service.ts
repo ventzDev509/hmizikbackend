@@ -8,7 +8,6 @@ export class SearchService {
     async globalSearch(query: string) {
         if (!query || query.length < 2) return { tracks: [], artists: [], playlists: [], albums: [] };
 
-        // ATANSYON: Lòd ki nan [ ] la dwe EXACTEMEN menm jan ak lòd nan Promise.all la
         const [tracks, artists, albums, playlists] = await Promise.all([
             // 1. Tracks
             this.prisma.track.findMany({
@@ -59,7 +58,6 @@ export class SearchService {
             }),
         ]);
 
-        // Kounye a lòd la koresponn nèt
         return { tracks, artists, albums, playlists };
     }
 }
