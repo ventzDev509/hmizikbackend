@@ -28,7 +28,7 @@ export class RecommendationService {
 
     // 3. Voye done yo bay Python
     const response = await axios.post(
-      'http://127.0.0.1:8000/train-recommendation',
+      'https://py-5mwv.onrender.com/train-recommendation',
       trainingData,
     );
 
