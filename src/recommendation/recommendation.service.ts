@@ -103,63 +103,112 @@ export class RecommendationService {
     }
 
 
-    async getDiscoveryWeekly(userId: string) {
-        // 1. Rale tout Feedback pozitif (Rating 1) nan tout sistèm nan
-        const allFeedbacks = await this.prisma.recommendationFeedback.findMany({
-            where: { rating: 1 },
-            select: { userId: true, trackId: true }
-        });
+   async getDiscoveryWeekly(userId: string) {
+    // 1. Rale tout Feedback pozitif (Rating 1) nan tout sistèm nan pou AI a ka travay
+    const allFeedbacks = await this.prisma.recommendationFeedback.findMany({
+        where: { rating: 1 },
+        select: { userId: true, trackId: true }
+    });
 
-        // 2. Rale tout Tracks ak karakteristik yo (pou nou toujou ka fè mix la)
-        const allTracks = await this.prisma.track.findMany({
-            select: { id: true, genre: true, bpm: true, duration: true, playCount: true }
-        });
+    // 2. Rale istwa itilizatè a (sa li te dejà tande/Like) pou nou ka filtre yo
+    const userHistory = await this.prisma.recommendationFeedback.findMany({
+        where: { userId: userId },
+        select: { trackId: true }
+    });
+    const listenedIds = userHistory.map(h => h.trackId);
 
-        const payload = {
-            current_user_id: userId,
-            interactions: allFeedbacks, // Lis [userId, trackId]
-            all_tracks: allTracks.map(t => ({
-                id: t.id,
-                genre: t.genre || 'Konpa',
-                bpm: Number(t.bpm) || 100,
-                plays: t.playCount || 0
-            }))
-        };
-
-        
-        try {
-            // 4. Voye bay Python
-           const res = await axios.post(`${process.env.PYTHON_AI_URL}/discovery-pro`, payload);
-            const recommendedIds = res.data.recommendations;
-
-            if (!recommendedIds || recommendedIds.length === 0) {
-                return [];
-            }
-
-            // 5. Rale tout enfòmasyon track yo nan Prisma pou nou ka voye yo bay Frontend la
-            const tracks = await this.prisma.track.findMany({
-                where: {
-                    id: { in: recommendedIds }
-                },
+    // 3. Rale tout Tracks yo
+    const allTracks = await this.prisma.track.findMany({
+        include: {
+            artist: {
                 include: {
-                    artist: {
-                        include: {
-                            user: {
-                                select: { name: true }
-                            }
-                        }
-                    }
+                    user: { select: { name: true } }
                 }
-            });
-
-            // 6. Triye tracks yo nan lòd Python te sijere a (paske Prisma pa garanti lòd la)
-            return recommendedIds
-                .map(id => tracks.find(t => t.id === id))
-                .filter(track => !!track); // Retire si gen yon "undefined" pa chans
-
-        } catch (error) {
-            console.error("Discovery AI Error:", error.message);
-            // Si AI a echwe, nou retounen kèk kandida o aza pou itilizatè a pa jwenn anyen vid
+            }
         }
+    });
+
+    // 4. FILTRAJ: Retire mizik itilizatè a te dejà koute
+    const freshTracks = allTracks.filter(track => !listenedIds.includes(track.id));
+
+    // 5. Prepare Payload pou Python (Sèlman ak mizik li poko tande)
+    const payload = {
+        current_user_id: userId,
+        interactions: allFeedbacks,
+        all_tracks: freshTracks.map(t => ({
+            id: t.id,
+            genre: t.genre || 'Konpa',
+            bpm: Number(t.bpm) || 100,
+            plays: t.playCount || 0
+        }))
+    };
+
+    try {
+        // 6. Voye bay Python
+        const res = await axios.post(`${process.env.PYTHON_AI_URL}/discovery-pro`, payload);
+        const recommendedIds = res.data.recommendations;
+
+        if (!recommendedIds || recommendedIds.length === 0) {
+            // Si AI a pa bay anyen, nou bay 10 mizik o aza nan sa li poko tande
+            return freshTracks.sort(() => 0.5 - Math.random()).slice(0, 10);
+        }
+
+        // 7. Map ID yo tounen nan objè track konplè yo epi kenbe lòd Python an
+        return recommendedIds
+            .map(id => allTracks.find(t => t.id === id))
+            .filter(track => !!track);
+
+    } catch (error) {
+        console.error("Discovery AI Error:", error.message);
+        // Fallback: Si AI a echwe, bay kèk mizik fre (poko tande) o aza
+        return freshTracks.sort(() => 0.5 - Math.random()).slice(0, 10);
     }
+}
+
+    async getDiscoveryPro(userId: string) {
+  // 1. Rale tout feedback (interactions) pou AI a ka konprann relasyon yo
+  const allFeedbacks = await this.prisma.recommendationFeedback.findMany();
+
+  // 2. Rale ID mizik itilizatè sa a te deja koute (Rating 1 oswa nenpòt feedback)
+  const userHistory = await this.prisma.recommendationFeedback.findMany({
+    where: { userId: userId },
+    select: { trackId: true }
+  });
+  
+  const listenedIds = userHistory.map(h => h.trackId);
+
+  // 3. Rale tout mizik ki nan DB a
+  const allTracks = await this.prisma.track.findMany({
+    include: {
+      artist: {
+        include: { user: { select: { name: true } } }
+      }
+    }
+  });
+
+  // 4. FILTRAJ: Nou retire mizik itilizatè a te koute deja nan lis n ap voye bay Python an
+  // Konsa Python ap sèlman rekòmande mizik itilizatè a POKO konnen
+  const freshTracks = allTracks.filter(track => !listenedIds.includes(track.id));
+
+  // 5. Voye done yo bay Python
+  const payload = {
+    current_user_id: userId,
+    interactions: allFeedbacks,
+    all_tracks: freshTracks // Nou voye lis ki filtre a
+  };
+
+  try {
+    const res = await axios.post(`${process.env.PYTHON_AI_URL}/discovery-pro`, payload);
+    const recommendedIds = res.data.recommendations;
+
+    // 6. Rekipere detay mizik Python rekòmande yo
+    // Nou re-itilize allTracks pou nou ka jwenn objè konplè yo rapidman
+    return allTracks.filter(t => recommendedIds.includes(t.id));
+    
+  } catch (error) {
+    console.error("AI Error:", error);
+    // Fallback: si AI a bay erè, bay 10 mizik itilizatè a poko tande
+    return freshTracks.slice(0, 10);
+  }
+}
 }
