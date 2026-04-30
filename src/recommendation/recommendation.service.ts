@@ -43,36 +43,37 @@ export class RecommendationService {
         return response.data;
     }
 
-    async getSuggestions(trackId: string) {
-        // 1. Rale tout tracks yo pou AI a ka konpare yo
-        const allTracks = await this.prisma.track.findMany();
+ async getSuggestions(trackId: string) {
+    const allTracks = await this.prisma.track.findMany();
 
-        const payload = allTracks.map(t => ({
-            trackId: t.id,
-            genre: t.genre || 'Unknown',
-            duration: t.duration || 0,
-            bpm: t.bpm || 0,
-            plays: t.playCount || 0
-        }));
+    const payload = allTracks.map(t => ({
+        trackId: t.id,
+        genre: t.genre || 'Unknown',
+        duration: Number(t.duration) || 0,
+        bpm: Number(t.bpm) || 0,
+        plays: Number(t.playCount || 0)
+    }));
 
-        // 2. Mande Python ki sa k sanble ak trackId sa a
-        try {
-            // const res = await axios.get(`http://127.0.0.1:8000/recommend/${trackId}`, {
-            //   data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
-            // });
-            const res = await axios.get(`${process.env.PYTHON_AI_URL}/recommend/${trackId}`, {
-                data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
-            });
+    try {
+        const res = await axios.post(`${process.env.PYTHON_AI_URL}/recommend/${trackId}`, payload);
 
-            const recommendedIds = res.data.recommendations;
+        const recommendedIds = res.data.recommendations;
 
-            // 3. Rale detay mizik sa yo nan Database la pou voye yo bay Front-end la
-            return await this.prisma.track.findMany({
-                where: { id: { in: recommendedIds } }
-            });
-        } catch (error) {
-            console.error("AI Prediction Error:", error.message);
-            return []; // Retounen yon lis vid si AI a gen pwoblèm
-        }
+        if (!recommendedIds || recommendedIds.length === 0) return [];
+
+        // Rale tracks yo nan Prisma
+        const tracks = await this.prisma.track.findMany({
+            where: { id: { in: recommendedIds } }
+        });
+
+        // TRIYAY: Remete tracks yo nan lòd Python te bay la
+        return recommendedIds
+            .map(id => tracks.find(t => t.id === id))
+            .filter(track => !!track); // Retire si yon track pa jwenn pa azar
+
+    } catch (error) {
+        console.error("AI Prediction Error:", error.response?.data || error.message);
+        return [];
     }
+}
 }
