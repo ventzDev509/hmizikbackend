@@ -2,6 +2,9 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException,
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
 import { Prisma } from '@prisma/client';
+import { HttpService } from '@nestjs/axios';
+
+import * as mm from 'music-metadata';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 @Injectable()
 export class TracksService {
@@ -9,7 +12,7 @@ export class TracksService {
     constructor(
         private prisma: PrismaService,
         private supabaseService: SupabaseService,
-
+        private readonly httpService: HttpService,
     ) {
 
         this.supabase = createClient(
@@ -19,7 +22,42 @@ export class TracksService {
     }
 
     // 1. KREYE YON TRACK (UPLOAD)
+    // async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
+    //     const profile = await this.prisma.profile.findUnique({ where: { userId } });
+
+    //     if (!profile || !profile.isArtist) {
+    //         throw new BadRequestException("Sèlman atis ki ka pibliye mizik.");
+    //     }
+
+    //     if (!files.audio || !files.audio[0]) {
+    //         throw new BadRequestException("Fichye audio a obligatwa.");
+    //     }
+
+    //     try {
+    //         const audioUrl = await this.supabaseService.uploadFile(files.audio[0], 'tracks');
+    //         let coverUrl: string | null = null;
+    //         if (files.cover && files.cover[0]) {
+    //             coverUrl = await this.supabaseService.uploadFile(files.cover[0], 'covers');
+    //         }
+
+    //         return await this.prisma.track.create({
+    //             data: {
+    //                 title: body.title,
+    //                 genre: body.genre || "Konpa",
+    //                 duration: body.duration ? parseFloat(body.duration) : 0,
+    //                 audioUrl,
+    //                 coverUrl,
+    //                 artistId: profile.id,
+    //             },
+    //             include: { artist: true }
+    //         });
+    //     } catch (error) {
+    //         throw new BadRequestException(`Erè kreyasyon: ${error.message}`);
+    //     }
+    // }
+
     async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
+        // 1. Verifikasyon Atis la
         const profile = await this.prisma.profile.findUnique({ where: { userId } });
 
         if (!profile || !profile.isArtist) {
@@ -31,29 +69,86 @@ export class TracksService {
         }
 
         try {
-            const audioUrl = await this.supabaseService.uploadFile(files.audio[0], 'tracks');
+            const audioFile = files.audio[0];
+            let bpmCalculated = 0;
+            let durationCalculated = 0;
+
+            // --- 2. ANALIZ RAPID (METADATA) ---
+            try {
+                const metadata = await mm.parseBuffer(audioFile.buffer, audioFile.mimetype);
+                durationCalculated = metadata.format.duration || 0;
+                bpmCalculated = metadata.common.bpm || 0;
+
+                // Fallback pou Raboday si metadata vid
+                if (bpmCalculated === 0 && body.genre === "Raboday") {
+                    bpmCalculated = 150;
+                }
+            } catch (analysisError) {
+                console.error("⚠️ Erè metadata:", analysisError.message);
+            }
+
+            // --- 3. UPLOAD SOU SUPABASE ---
+            // Nou dwe fè sa AVAN nou rele Python paske Python bezwen URL la
+            const audioUrl = await this.supabaseService.uploadFile(audioFile, 'tracks');
+
             let coverUrl: string | null = null;
             if (files.cover && files.cover[0]) {
                 coverUrl = await this.supabaseService.uploadFile(files.cover[0], 'covers');
             }
 
-            return await this.prisma.track.create({
+            // --- 4. KREYASYON NAN BAZ DONE (PRISMA) ---
+            const newTrack = await this.prisma.track.create({
                 data: {
                     title: body.title,
                     genre: body.genre || "Konpa",
-                    duration: body.duration ? parseFloat(body.duration) : 0,
+                    duration: body.duration ? parseFloat(body.duration) : durationCalculated,
+                    bpm: bpmCalculated,
                     audioUrl,
                     coverUrl,
                     artistId: profile.id,
                 },
                 include: { artist: true }
             });
+
+            // --- 5. DEKLANCHE ANALIZ AI (PYTHON) ---
+            // Si apre metadata BPM nan toujou 0, nou rele Python nan background
+            if (newTrack.bpm === 0) {
+                console.log(`🚀 Siyal voye bay Python pou analiz: ${newTrack.id}`);
+
+                // Nou pa mete 'await' isit la pou NestJS ka reponn kliyan an rapid
+                this.httpService.post('http://localhost:8000/analyze-bpm', {
+                    trackId: newTrack.id,
+                    audioUrl: newTrack.audioUrl
+                }).subscribe({
+                    next: () => console.log('✅ Python resevwa demand lan'),
+                    error: (err) => console.error('❌ Sèvè Python an pa reponn:', err.message)
+                });
+            }
+
+            return newTrack;
+
         } catch (error) {
-            throw new BadRequestException(`Erè kreyasyon: ${error.message}`);
+            throw new BadRequestException(`Erè kreyasyon track: ${error.message}`);
         }
     }
 
-   
+    async updateBpm(id: string, bpm: number) {
+        try {
+            const track = await this.prisma.track.findUnique({ where: { id } });
+
+            if (!track) {
+                throw new NotFoundException(`Track ak ID ${id} la pa egziste.`);
+            }
+
+            return await this.prisma.track.update({
+                where: { id },
+                data: { bpm: Math.round(bpm) }, // Nou asire se yon chif antye
+            });
+        } catch (error) {
+            console.error(`❌ Erè nan updateBpm Service: ${error.message}`);
+            throw new InternalServerErrorException("Pa kapab mete BPM nan ajou.");
+        }
+    }
     async findAll(limit: number = 10, page: number = 1) {
         const skip = (page - 1) * limit;
 
@@ -114,7 +209,7 @@ export class TracksService {
                         select: {
                             username: true,
                             avatarUrl: true,
-                            user: { select: { name: true ,profile:{select:{customTarif:true,payoutThreshold:true}}} }
+                            user: { select: { name: true, profile: { select: { customTarif: true, payoutThreshold: true } } } }
                         }
                     }
                     ,
@@ -173,7 +268,7 @@ export class TracksService {
                     trackId,
                     userId,
                     userIp: ip,
-                    city: recentPlay.city 
+                    city: recentPlay.city
                 },
             });
         }

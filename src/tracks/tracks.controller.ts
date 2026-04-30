@@ -58,6 +58,16 @@ export class TracksController {
         return this.tracksService.findTracksByUserProfile(userId, limit, page);
     }
 
+    @Patch(':id/bpm')
+    async updateBpm(
+        @Param('id') id: string,
+        @Body() body: { bpm: number }
+    ) {
+        // Log sa a ap parèt nan tèminal NestJS la pou konfimasyon
+        console.log(`📩 Resevwa soti nan Python: Track ${id} gen ${body.bpm} BPM`);
+
+        return this.tracksService.updateBpm(id, body.bpm);
+    }
 
     @Post(':id/play')
     async incrementPlay(

@@ -62,13 +62,13 @@ model Profile {
 
 // 3. Modèl Track (Mizik)
 model Track {
-  id       String  @id @default(uuid())
-  title    String
-  genre    String?
-  audioUrl String
-  coverUrl String? // Foto kouvèti chante a
-  duration Float? // Pou n konnen longè mizik la
-
+  id        String     @id @default(uuid())
+  title     String
+  genre     String?
+  audioUrl  String
+  coverUrl  String? // Foto kouvèti chante a
+  duration  Float? // Pou n konnen longè mizik la
+  bpm       Float?
   // Relasyon ak Atis la (Profile)
   plays     Play[] // Relasyon ak tab Play la
   playCount Int        @default(0) // Yon kontè rapid pou pèfòmans

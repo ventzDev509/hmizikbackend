@@ -16,9 +16,10 @@ import { PublishService } from './album/publish.service';
 import { SearchModule } from './search/search.module';
 import { FollowModule } from './follow/follow.module';
 import { NotificationModule } from './notification/notification.module';
+import { RecommendationModule } from './recommendation/recommendation.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule, FollowModule, NotificationModule],
+  imports: [PrismaModule, AuthModule, UsersModule, MailModule, ProfilesModule,SupabaseModule, TracksModule, LikesModule, PlaylistModule, AlbumModule,ScheduleModule.forRoot(), SearchModule, FollowModule, NotificationModule, RecommendationModule],
   controllers: [AppController],
   providers: [AppService,PublishService],
 })
