@@ -116,7 +116,7 @@ export class TracksService {
                 console.log(`🚀 Siyal voye bay Python pou analiz: ${newTrack.id}`);
 
                 // Nou pa mete 'await' isit la pou NestJS ka reponn kliyan an rapid
-                this.httpService.post('http://localhost:8000/analyze-bpm', {
+                this.httpService.post('https://py-5mwv.onrender.com/analyze-bpm', {
                     trackId: newTrack.id,
                     audioUrl: newTrack.audioUrl
                 }).subscribe({

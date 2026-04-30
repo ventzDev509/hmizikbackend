@@ -49,7 +49,10 @@ export class RecommendationService {
 
   // 2. Mande Python ki sa k sanble ak trackId sa a
   try {
-    const res = await axios.get(`http://127.0.0.1:8000/recommend/${trackId}`, {
+    // const res = await axios.get(`http://127.0.0.1:8000/recommend/${trackId}`, {
+    //   data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
+    // });
+    const res = await axios.get(`https://py-5mwv.onrender.com/recommend/${trackId}`, {
       data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
     });
 
