@@ -6,6 +6,10 @@ import { HttpService } from '@nestjs/axios';
 
 import * as mm from 'music-metadata';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
 @Injectable()
 export class TracksService {
     private supabase: SupabaseClient;
@@ -116,7 +120,7 @@ export class TracksService {
                 console.log(`🚀 Siyal voye bay Python pou analiz: ${newTrack.id}`);
 
                 // Nou pa mete 'await' isit la pou NestJS ka reponn kliyan an rapid
-                this.httpService.post('https://py-5mwv.onrender.com/analyze-bpm', {
+                this.httpService.post(`${process.env.PYTHON_AI_URL}/analyze-bpm`, {
                     trackId: newTrack.id,
                     audioUrl: newTrack.audioUrl
                 }).subscribe({

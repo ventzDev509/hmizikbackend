@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 @Injectable()
 export class RecommendationService {
@@ -28,7 +31,7 @@ export class RecommendationService {
 
     // 3. Voye done yo bay Python
     const response = await axios.post(
-      'https://py-5mwv.onrender.com/train-recommendation',
+      `${process.env.PYTHON_AI_URL}/train-recommendation`,
       trainingData,
     );
 
@@ -52,7 +55,7 @@ export class RecommendationService {
     // const res = await axios.get(`http://127.0.0.1:8000/recommend/${trackId}`, {
     //   data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
     // });
-    const res = await axios.get(`https://py-5mwv.onrender.com/recommend/${trackId}`, {
+    const res = await axios.get(`${process.env.PYTHON_AI_URL}/recommend/${trackId}`, {
       data: payload // FastAPI ka resevwa body nan GET pafwa, oswa chanje l an POST
     });
 
