@@ -80,6 +80,7 @@ model Track {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   likes     Like[]
+  RecommendationFeedback     RecommendationFeedback[]
 
   @@index([artistId])
 }
@@ -91,7 +92,19 @@ enum UserRole {
   SUPERCUSTOMER
   ARTIST
 }
+model RecommendationFeedback {
+  id        String   @id @default(uuid())
+  userId    String
+  trackId   String
+  // rating: 1 = Klike/Koute, -1 = Skip/Sote
+  rating    Int      
+  createdAt DateTime @default(now())
 
+  // Relasyon (opsyonèl men rekòmande)
+  track     Track    @relation(fields: [trackId], references: [id])
+
+  @@index([userId, trackId])
+}
 model Like {
   id     String @id @default(uuid())
   userId String
@@ -193,3 +206,5 @@ model Notification {
   // AJOUTE LIY SA A: Relasyon pou moun ki voye a
   sender User @relation("SentNotifications", fields: [senderId], references: [id])
 }
+
+
