@@ -13,11 +13,11 @@ export class ProfilesService {
             include: {
                 user: { select: { id: true, name: true, email: true } },
                 tracks: {
-                    take: 10, 
-                    orderBy: { createdAt: 'desc' }, 
-                }, 
+                    take: 10,
+                    orderBy: { createdAt: 'desc' },
+                },
                 _count: {
-                    select: { tracks: true } 
+                    select: { tracks: true }
 
                 }
             },
@@ -112,5 +112,42 @@ export class ProfilesService {
                 lastPage: Math.ceil(total / limit)
             }
         };
+    }
+
+
+
+    async becomeArtist(userId: string, data: { stageName: string; bio?: string; location?: string; socialLinks?: any }) {
+        // 1. Tcheke si pwofil la egziste
+        const profile = await this.prisma.profile.findUnique({
+            where: { userId },
+        });
+
+        if (!profile) {
+            throw new NotFoundException('Pwofil sa a pa egziste');
+        }
+
+        // 2. Tranzaksyon pou mete ajou Pwofil la epi chanje Ròl User a
+        return this.prisma.$transaction(async (tx) => {
+
+            // Mete ajou modèl User a pou ròl la vin ARTIST
+            await tx.user.update({
+                where: { id: userId },
+                data: { role: 'ARTIST' }, 
+            });
+
+            // Mete ajou modèl Profile la
+            return tx.profile.update({
+                where: { userId },
+                data: {
+                    isArtist: true,
+                    username: data.stageName, 
+                    bio: data.bio || profile.bio,
+                    location: data.location || profile.location,
+                    socialLinks: data.socialLinks ? data.socialLinks : profile.socialLinks,
+                    verified: false, 
+                },
+                include: { user: true }
+            });
+        });
     }
 }

@@ -1,5 +1,5 @@
 // src/profiles/profiles.controller.ts
-import { Controller, Get, Patch, Body, Param, UseGuards, Req, UploadedFiles, UseInterceptors, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, UseGuards, Req, UploadedFiles, UseInterceptors, Query, ParseIntPipe, Post, Request } from '@nestjs/common';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -57,6 +57,12 @@ export class ProfilesController {
     ) {
         // Nou rele fonksyon ou te ekri a nan Sèvis la
         return this.profilesService.getPaginatedProfiles(page, limit);
+    }
+
+    @Post('become-artist')
+    @UseGuards(JwtAuthGuard) 
+    async upgradeToArtist(@Request() req, @Body() body: any) {
+        return this.profilesService.becomeArtist(req.user.id, body);
     }
 
 }
