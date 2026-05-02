@@ -106,19 +106,26 @@ export class PlaylistService {
      * Soustrè valè likes li nan nòt total la
      */
     async removeTrack(playlistId: string, trackId: string) {
+        // 1. Rekipere kantite like mizik la genyen anvan nou dekonekte l
         const track = await this.prisma.track.findUnique({
             where: { id: trackId },
-            select: { likes: true }
+            include: {
+                _count: {
+                    select: { likes: true }
+                }
+            }
         });
 
         if (!track) throw new NotFoundException('Mizik sa pa egziste');
 
+        // 2. Retire mizik la epi dekremente totalLikesCount la
         return this.prisma.playlist.update({
             where: { id: playlistId },
             data: {
                 tracks: { disconnect: { id: trackId } },
                 totalLikesCount: {
-                    decrement: track.likes.length || 0
+                    // Si mizik la te gen 10 likes, n ap retire 10 nan playlist la
+                    decrement: track._count.likes || 0
                 }
             }
         });

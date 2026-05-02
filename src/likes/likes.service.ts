@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from 'src/notification/notification.service';
+import { PlaylistService } from 'src/playlist/playlist.service';
 
 @Injectable()
 export class LikesService {
     constructor(
         private prisma: PrismaService,
-        private notificationService: NotificationService // 2. Enjekte sèvis la
+        private notificationService: NotificationService,
+        private playlistService: PlaylistService
     ) { }
 
     async toggleLike(userId: string, targetId: string, type: 'track' | 'album' = 'track') {
@@ -42,6 +44,7 @@ export class LikesService {
 
             if (existingLike) {
                 await this.prisma.like.delete({ where: { id: existingLike.id } });
+                await this.playlistService.syncPlaylistScores(targetId, false);
                 return { liked: false, message: "Retire." };
             } else {
                 await this.prisma.like.create({
@@ -51,7 +54,7 @@ export class LikesService {
                         albumId: type === 'album' ? targetId : null,
                     },
                 });
-
+                await this.playlistService.syncPlaylistScores(targetId, true);
                 // VOYE NOTIFIKASYON
                 if (recipientId && recipientId !== userId) {
                     await this.notificationService.createNotification({

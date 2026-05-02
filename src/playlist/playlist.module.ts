@@ -7,5 +7,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [PlaylistController],
   providers: [PlaylistService],
+  exports: [PlaylistService]
 })
 export class PlaylistModule {}
