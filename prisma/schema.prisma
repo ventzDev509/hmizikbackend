@@ -62,25 +62,26 @@ model Profile {
 
 // 3. Modèl Track (Mizik)
 model Track {
-  id        String     @id @default(uuid())
-  title     String
-  genre     String?
-  audioUrl  String
-  coverUrl  String? // Foto kouvèti chante a
-  duration  Float? // Pou n konnen longè mizik la
-  bpm       Float?
+  id                     String                   @id @default(uuid())
+  title                  String
+  genre                  String?
+  audioUrl               String
+  coverUrl               String?
+  duration               Float?
+  isActive               Boolean?                 @default(true)
+  bpm                    Float?
   // Relasyon ak Atis la (Profile)
-  plays     Play[] // Relasyon ak tab Play la
-  playCount Int        @default(0) // Yon kontè rapid pou pèfòmans
-  albumId   String?
-  album     Album?     @relation(fields: [albumId], references: [id], onDelete: SetNull)
-  artistId  String
-  artist    Profile    @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  playlists Playlist[] @relation("PlaylistTracks")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  likes     Like[]
-  RecommendationFeedback     RecommendationFeedback[]
+  plays                  Play[] // Relasyon ak tab Play la
+  playCount              Int                      @default(0) // Yon kontè rapid pou pèfòmans
+  albumId                String?
+  album                  Album?                   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  artistId               String
+  artist                 Profile                  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  playlists              Playlist[]               @relation("PlaylistTracks")
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  likes                  Like[]
+  RecommendationFeedback RecommendationFeedback[]
 
   @@index([artistId])
 }
@@ -92,19 +93,21 @@ enum UserRole {
   SUPERCUSTOMER
   ARTIST
 }
+
 model RecommendationFeedback {
   id        String   @id @default(uuid())
   userId    String
   trackId   String
   // rating: 1 = Klike/Koute, -1 = Skip/Sote
-  rating    Int      
+  rating    Int
   createdAt DateTime @default(now())
 
   // Relasyon (opsyonèl men rekòmande)
-  track     Track    @relation(fields: [trackId], references: [id])
+  track Track @relation(fields: [trackId], references: [id])
 
   @@index([userId, trackId])
 }
+
 model Like {
   id     String @id @default(uuid())
   userId String
@@ -131,17 +134,28 @@ model Playlist {
   coverUrl    String? @default("https://picsum.photos/seed/playlist/400")
   isPublic    Boolean @default(true)
 
+  // Nou sere sòm likes yo isit la pou akey la pa bezwen fè kalkil chak fwa
+  totalLikesCount Int @default(0)
+
+  // Pou sekirite, nou ka mete yon status
+  status String @default("active") // "active", "hidden", "under_review"
+
   // Relasyon ak User (Owner)
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
   // Relasyon ak Tracks (Many-to-Many)
+  // Atansyon: Track yo dwe gen yon jaden "likesCount" tou nan modèl pa yo
   tracks Track[] @relation("PlaylistTracks")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
+
+  // Index pou akey la ka chaje playlist ki gen plis like yo trè rapid
+  @@index([totalLikesCount(sort: Desc)])
 }
 
 model Play {
@@ -206,5 +220,3 @@ model Notification {
   // AJOUTE LIY SA A: Relasyon pou moun ki voye a
   sender User @relation("SentNotifications", fields: [senderId], references: [id])
 }
-
-
