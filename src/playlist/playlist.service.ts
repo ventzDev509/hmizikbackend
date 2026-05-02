@@ -16,7 +16,7 @@ export class PlaylistService {
                 userId,
                 coverUrl,
                 status: 'active',
-                totalLikesCount: 0, // Kòmanse nan zewo
+                totalLikesCount: 0,
             },
         });
     }
@@ -25,75 +25,79 @@ export class PlaylistService {
      * JWENN TOP PLAYLIST POU AKÈY (RANKING LOGIC)
      * Kalkile baze sou sòm total likes mizik ki ladan l yo
      */
-   async getTrending() {
-    return this.prisma.playlist.findMany({
-        where: {
-            isPublic: true,
-            status: 'active',
-            tracks: {
-                some: {}
-            }
-        },
-        orderBy: {
-            totalLikesCount: 'desc'
-        },
-        take: 15,
-        include: {
-            user: { 
-                select: { name: true } 
-            },
-            //  Rekipere 4 premye mizik yo pou kouvèti a
-            tracks: {
-                take: 4,
-                select: {
-                    id: true,
-                    coverUrl: true
+    async getTrending() {
+        return this.prisma.playlist.findMany({
+            where: {
+                isPublic: true,
+                status: 'active',
+                tracks: {
+                    some: {}
                 }
             },
-            _count: { 
-                select: { tracks: true } 
+            orderBy: {
+                totalLikesCount: 'desc'
+            },
+            take: 15,
+            include: {
+                user: {
+                    select: { name: true }
+                },
+                //  Rekipere 4 premye mizik yo pou kouvèti a
+                tracks: {
+                    take: 4,
+                    select: {
+                        id: true,
+                        coverUrl: true
+                    }
+                },
+                _count: {
+                    select: { tracks: true }
+                }
             }
-        }
-    });
-}
+        });
+    }
     /**
      * AJOUTE YON MIZIK NAN PLAYLIST
      * Mete ajou nòt total la otomatikman
      */
     async addTrack(playlistId: string, trackId: string) {
         try {
-            // 1. Tcheke si mizik la egziste epi pran kantite like li genyen
+            const isAlreadyInPlaylist = await this.prisma.playlist.findFirst({
+                where: {
+                    id: playlistId,
+                    tracks: { some: { id: trackId } }
+                }
+            });
+
+            if (isAlreadyInPlaylist) {
+                throw new ForbiddenException('Mizik sa a deja nan playlist la');
+            }
+            // 1. Rekipere mizik la ak KANTITE like li genyen
             const track = await this.prisma.track.findUnique({
                 where: { id: trackId },
-                select: { likes: true, isActive: true }
+                include: {
+                    _count: {
+                        select: { likes: true } // Sa a ap ba ou kantite like la dirèkteman
+                    }
+                }
             });
 
             if (!track) throw new NotFoundException('Mizik sa pa egziste');
-            if (!track.isActive) throw new ForbiddenException('Mizik sa gen yon pwoblèm dwa otè');
 
-            // 2. Tcheke limit (Max 50 mizik pou evite spam ranking)
-            const playlistCount = await this.prisma.playlist.findUnique({
-                where: { id: playlistId },
-                include: { _count: { select: { tracks: true } } }
-            });
-
-            if (playlistCount && playlistCount?._count.tracks >= 50) {
-                throw new ForbiddenException('Ou pa ka mete plis pase 50 mizik nan yon playlist');
-            }
-
-            // 3. Update playlist
+            // 2. Mizajou playlist la ak kantite sa a
             return this.prisma.playlist.update({
                 where: { id: playlistId },
                 data: {
                     tracks: { connect: { id: trackId } },
                     totalLikesCount: {
-                        increment: track.likes.length || 0
+                        // Nou itilize track._count.likes kounye a
+                        increment: track._count.likes || 0
                     }
                 },
                 include: { tracks: true }
             });
         } catch (error) {
-            console.log(error)
+            console.log(error);
         }
     }
 
