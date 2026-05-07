@@ -1,19 +1,21 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import * as dotenv from 'dotenv';
 
+dotenv.config();
 @Injectable()
 export class MailService {
-    constructor(private mailerService: MailerService) { }
+  constructor(private mailerService: MailerService) { }
 
-    async sendUserConfirmation(user: any, token: string) {
-        const url = `https://h-mizik.com/confirm?token=${token}`; // Lyen React la
+  async sendUserConfirmation(user: any, token: string) {
+    const url = `${process.env.LINK}/confirm?token=${token}`;
 
-        try {
-            await this.mailerService.sendMail({
-                to: user.email,
-                subject: 'Byenvini nan H-Mizik! Konfime imèl ou',
-                template: './confirmation', // Si w itilize templates, sinon sèvi ak 'html' anba a
-                html: `
+    try {
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: 'Byenvini nan H-Mizik! Konfime imèl ou',
+        template: './confirmation',
+        html: `
   <div style="background-color: #121212; color: #ffffff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 40px; border-radius: 12px; text-align: center;">
     
     <div style="margin-bottom: 30px;">
@@ -49,12 +51,12 @@ export class MailService {
     </div>
   </div>
 `,
-            });
-        } catch (error) {
-            throw new InternalServerErrorException({
-                errorCode: 'ERR_MAIL_SEND_FAILED',
-                message: 'Nou pa t ka voye imèl konfimasyon an.' + error,
-            });
-        }
+      });
+    } catch (error) {
+      throw new InternalServerErrorException({
+        errorCode: 'ERR_MAIL_SEND_FAILED',
+        message: 'Nou pa t ka voye imèl konfimasyon an.' + error,
+      });
     }
+  }
 }

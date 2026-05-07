@@ -15,7 +15,7 @@ export class RecommendationService {
             include: {
                 likes: true,
                 _count: {
-                    select: { plays: true } // Si ou gen yon relasyon 'plays'
+                    select: { plays: true }
                 }
             },
         });
@@ -23,9 +23,9 @@ export class RecommendationService {
         // 2. Map done yo pou AI a
 
         const trainingData = tracks.map((track) => ({
-            trackId: track.id, // Ajoute sa pou evite mismatch
+            trackId: track.id, 
             genre: track.genre || 'Unknown',
-            duration: Number(track.duration) || 0, // Fòse l tounen Number
+            duration: Number(track.duration) || 0, 
             bpm: Number(track.bpm) || 0,
             plays: Number(track.playCount || track._count?.plays || 0),
             liked: track.likes.length > 0 ? 1 : 0,
@@ -45,7 +45,7 @@ export class RecommendationService {
 
     async getSuggestions(trackId: string) {
         const allTracks = await this.prisma.track.findMany({
-            include: { RecommendationFeedback: true } // Asire w ou gen relasyon sa a nan Prisma
+            include: { RecommendationFeedback: true }
         });
 
         const payload = allTracks.map(t => {
@@ -79,7 +79,7 @@ export class RecommendationService {
             // TRIYAY: Remete tracks yo nan lòd Python te bay la
             return recommendedIds
                 .map(id => tracks.find(t => t.id === id))
-                .filter(track => !!track); // Retire si yon track pa jwenn pa azar
+                .filter(track => !!track); 
 
         } catch (error) {
             console.error("AI Prediction Error:", error.response?.data || error.message);
