@@ -1,4 +1,4 @@
-// src/album/album.controller.ts
+
 import {
     Controller,
     Post,
@@ -28,7 +28,7 @@ export class AlbumController {
      * POST /album/create
      */
     @Post('create')
-    @UseInterceptors(FileInterceptor('cover')) // Resevwa imaj kouvèti album lan
+    @UseInterceptors(FileInterceptor('cover')) 
     async createAlbum(
         @UploadedFile() file: Express.Multer.File,
         @Body() body: { title: string; artistId: string; releaseDate: string; genre?: string; description?: string }
@@ -42,13 +42,13 @@ export class AlbumController {
     }
 
 
-    // Jwenn yon album pa ID (Se sa useAlbum getAlbum rele)
+    
     @Get(':id')
     async getOne(@Param('id') id: string) {
         return this.albumService.getAlbumWithTracks(id);
     }
 
-    // Modifye album (Tit / Cover)
+    
     @Patch(':id')
     @UseInterceptors(FileInterceptor('cover'))
     async update(
@@ -59,14 +59,14 @@ export class AlbumController {
         return this.albumService.updateAlbum(id, body, file);
     }
 
-    // Efase yon mizik
+    
     @UseGuards(JwtAuthGuard)
     @Delete(':id')
     async remove(@Param('id') id: string, @Req() req) {
         return this.albumService.deleteAlbum(id, req.user.id);
     }
 
-    // Finalize
+    
     @Post(':id/finalize')
     async finalize(@Param('id') id: string) {
         return this.albumService.finalizeAlbum(id);
@@ -79,7 +79,7 @@ export class AlbumController {
     @Post(':id/add-track')
     @UseInterceptors(FileFieldsInterceptor([
         { name: 'audio', maxCount: 1 },
-        { name: 'cover', maxCount: 1 }, // Opsyonèl si atis la vle yon foto diferan
+        { name: 'cover', maxCount: 1 }, 
     ]))
     async addTrack(
         @Param('id') albumId: string,

@@ -49,7 +49,7 @@ export class RecommendationController {
     @Get('discovery')
     async getDiscovery(@Req() req) {
         try {
-            // Nou rekipere userId ki nan Token JWT a
+            
             const userId = req.user.id
 
             const tracks = await this.recommendationService.getDiscoveryWeekly(userId);

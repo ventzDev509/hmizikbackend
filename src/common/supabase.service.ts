@@ -26,11 +26,11 @@ export class SupabaseService {
      */
     private sanitizeFileName(fileName: string): string {
         return fileName
-            .normalize('NFD')                     // Separe aksan ak lèt (è -> e + `)
-            .replace(/[\u0300-\u036f]/g, '')     // Retire aksan yo
-            .replace(/[^a-zA-Z0-9.\-_]/g, '_')    // Ranplase tout sa ki pa lèt/chif/pwen pa _
-            .replace(/_{2,}/g, '_')               // Evite double underscore (__)
-            .toLowerCase();                       // Tout an miniskil pou sekirite
+            .normalize('NFD')                     
+            .replace(/[\u0300-\u036f]/g, '')     
+            .replace(/[^a-zA-Z0-9.\-_]/g, '_')    
+            .replace(/_{2,}/g, '_')               
+            .toLowerCase();                       
     }
 
     private async compressAudio(file: Express.Multer.File): Promise<Buffer> {
@@ -69,7 +69,7 @@ export class SupabaseService {
         let bufferToUpload = file.buffer;
         let finalMimeType = file.mimetype;
         
-        // 1. Netwaye non an anvan nou fè anyen
+        
         let cleanName = this.sanitizeFileName(file.originalname);
         
         if (file.mimetype.startsWith('audio/')) {
@@ -82,7 +82,7 @@ export class SupabaseService {
                 
                 finalMimeType = 'audio/mpeg';
                 
-                // 2. Ranje extension an pwòp (retire ansyen an, mete .mp3)
+                
                 const nameWithoutExt = cleanName.substring(0, cleanName.lastIndexOf('.')) || cleanName;
                 cleanName = `${nameWithoutExt}.mp3`;
 

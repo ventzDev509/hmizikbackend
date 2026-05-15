@@ -1,4 +1,4 @@
-// src/profiles/profiles.service.ts
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from 'src/common/supabase.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -27,7 +27,7 @@ export class ProfilesService {
         return profile;
     }
 
-    // Jwenn pwofil pa Username (pou lòt moun wè)
+    
     async findByUsername(username: string) {
         const profile = await this.prisma.profile.findUnique({
             where: { username },
@@ -38,21 +38,21 @@ export class ProfilesService {
 
     }
 
-    // Nan profile.service.ts
+    
     async updateProfile(userId: string, data: any, files?: any) {
         const updateData: any = {
             bio: data.bio,
             username: data.username,
-            // Pa bliye parse socialLinks paske FormData voye l kòm string
+            
             socialLinks: data.socialLinks ? JSON.parse(data.socialLinks) : []
         };
 
-        // Upload Avatar si li la
+        
         if (files?.avatar) {
             updateData.avatarUrl = await this.supabaseService.uploadFile(files.avatar[0], 'avatars');
         }
 
-        // Upload Banner si li la
+        
         if (files?.banner) {
             updateData.bannerUrl = await this.supabaseService.uploadFile(files.banner[0], 'banners');
         }
@@ -79,7 +79,7 @@ export class ProfilesService {
             }
         });
 
-        // Nou vlope l pou l match ak interface Frontend lan
+        
         return {
             data: profiles,
             meta: {
@@ -90,7 +90,7 @@ export class ProfilesService {
         };
     }
 
-    // Si w vle yon vèsyon ki gen "Pagination" (pwofesyonèl)
+    
     async getPaginatedProfiles(page: number = 1, limit: number = 10) {
         const skip = (page - 1) * limit;
 
@@ -117,7 +117,7 @@ export class ProfilesService {
 
 
     async becomeArtist(userId: string, data: { stageName: string; bio?: string; location?: string; socialLinks?: any }) {
-        // 1. Tcheke si pwofil la egziste
+        
         const profile = await this.prisma.profile.findUnique({
             where: { userId },
         });
@@ -126,16 +126,16 @@ export class ProfilesService {
             throw new NotFoundException('Pwofil sa a pa egziste');
         }
 
-        // 2. Tranzaksyon pou mete ajou Pwofil la epi chanje Ròl User a
+        
         return this.prisma.$transaction(async (tx) => {
 
-            // Mete ajou modèl User a pou ròl la vin ARTIST
+            
             await tx.user.update({
                 where: { id: userId },
                 data: { role: 'ARTIST' }, 
             });
 
-            // Mete ajou modèl Profile la
+            
             return tx.profile.update({
                 where: { userId },
                 data: {

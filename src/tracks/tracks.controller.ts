@@ -23,7 +23,7 @@ import { JwtAuthGuard } from 'src/guard/jwt-auth.guard';
 export class TracksController {
     constructor(private readonly tracksService: TracksService) { }
 
-    // 1. KREYE YON MIZIK (Pwoteje ak JWT)
+    
     @UseGuards(JwtAuthGuard)
     @Post('upload')
     @UseInterceptors(FileFieldsInterceptor([
@@ -38,7 +38,7 @@ export class TracksController {
         return this.tracksService.create(req.user.id, body, files);
     }
 
-    // 2. JWENN TOUT MIZIK (Feed jeneral ak Infinite Scroll)
+    
     @Get()
     async getAllTracks(
         @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
@@ -47,7 +47,7 @@ export class TracksController {
         return this.tracksService.findAll(limit, page);
     }
 
-    // 3. JWENN MIZIK YON ITILIZATÈ PRESI (Pou Paj Pwofil la)
+    
 
     @Get('user/:userId')
     async getTracksByProfile(
@@ -63,7 +63,7 @@ export class TracksController {
         @Param('id') id: string,
         @Body() body: { bpm: number }
     ) {
-        // Log sa a ap parèt nan tèminal NestJS la pou konfimasyon
+        
         console.log(`📩 Resevwa soti nan Python: Track ${id} gen ${body.bpm} BPM`);
 
         return this.tracksService.updateBpm(id, body.bpm);
@@ -74,55 +74,55 @@ export class TracksController {
         @Param('id') id: string,
         @Req() req: any
     ) {
-        // 1. Rekipere valè brut la
+        
         const rawIp = req.headers['x-forwarded-for'] ||
             req.ip ||
             req.connection?.remoteAddress ||
             req.socket?.remoteAddress;
 
-        // 2. Netwaye IP a (Pran sèlman premye a si gen vigil, epi retire prefiks IPv6 la)
+        
         let ip = '';
         if (typeof rawIp === 'string') {
-            // Si gen vigil, nou pran premye eleman an
+            
             ip = rawIp.split(',')[0].trim();
-            // Retire prefiks ::ffff: ki konn parèt sou sèvè Node
+            
             ip = ip.replace(/^.*:/, '');
         }
 
-        console.log("Vrè IP k ap teste a:", ip); // W ap wè "200.113.230.158" sèlman kounye a
+        console.log("Vrè IP k ap teste a:", ip); 
 
         const userId = req.user?.id;
 
         return this.tracksService.incrementPlays(id, userId, ip);
     }
 
-    // Wout pou rale mizik ki Trending yo
+    
     @Get('trending')
     async getTrending(@Query('limit') limit: string) {
-        // Nou konvèti limit la an nimewo
+        
         const take = limit ? parseInt(limit, 10) : 10;
         return this.tracksService.findTrending(take);
     }
-    // 4. JWENN YON SÈL MIZIK PA ID
+    
     @Get(':id')
     async getOneTrack(@Param('id') id: string) {
         return this.tracksService.findOne(id);
     }
 
-    // 5. MOUTE KANTITE PLAYS (Lè yon moun koute)
+    
     @Patch(':id/play')
     async addPlay(@Param('id') id: string) {
         return this.tracksService.incrementPlays(id);
     }
 
-    // 6. MODIFYE ENFÒMASYON MIZIK (Pwoteje)
+    
     @UseGuards(JwtAuthGuard)
     @Patch(':id')
     async updateTrack(@Request() req, @Param('id') id: string, @Body() updateData: any) {
         return this.tracksService.update(req.user.id, id, updateData);
     }
 
-    // 3. SIPRIME YON MIZIK (Pwoteksyon ak JWT)
+    
     @UseGuards(JwtAuthGuard)
     @Delete('remove/:id')
     async remove(@Param('id') id: string, @Req() req) {

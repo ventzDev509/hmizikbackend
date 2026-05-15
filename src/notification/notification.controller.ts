@@ -15,7 +15,7 @@ export class NotificationController {
                     title: 'H-MIZIK Tès 🎵',
                     body: 'Si ou wè sa, sa vle di tout bagay mache nèt!',
                 },
-                // Opsyonèl: sa pèmèt notifikasyon an parèt menm si moun lan sou paj la (sou Android)
+                
                 android: {
                     notification: {
                         sound: 'default',
@@ -24,7 +24,7 @@ export class NotificationController {
                 token: token,
             };
 
-            // Nou itilize admin.messaging() piske se li nou te inisyalize
+            
             const response = await admin.messaging().send(message);
             return { success: true, messageId: response };
         } catch (error) {
@@ -33,7 +33,7 @@ export class NotificationController {
         }
     }
 
-    // --- Wout ki bezwen Sekirite yo ---
+    
     @UseGuards(JwtAuthGuard)
     @Get()
     async getMyNotifications(@Req() req) {

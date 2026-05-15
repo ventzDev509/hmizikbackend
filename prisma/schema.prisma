@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// 1. Modèl User
+
 model User {
   id                   String    @id @default(uuid())
   name                 String
@@ -32,7 +32,7 @@ model User {
   playlists         Playlist[]
 }
 
-// 2. Modèl Profile
+
 model Profile {
   id              String  @id @default(uuid())
   username        String? @unique
@@ -46,21 +46,21 @@ model Profile {
   payoutThreshold Float   @default(2500)
   socialLinks     Json?   @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
 
-  // Relasyon User
+  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @unique
   followers Follow[] @relation("Following")
 
-  // Atis pwofil sa a ap swiv
+  
   following Follow[]   @relation("Follower")
-  // NOUVO: Yon atis ka gen plizyè tracks
+  
   tracks    Track[]
   playlists Playlist[]
   albums    Album[]
   updatedAt DateTime   @updatedAt
 }
 
-// 3. Modèl Track (Mizik)
+
 model Track {
   id                     String                   @id @default(uuid())
   title                  String
@@ -70,9 +70,9 @@ model Track {
   duration               Float?
   isActive               Boolean?                 @default(true)
   bpm                    Float?
-  // Relasyon ak Atis la (Profile)
-  plays                  Play[] // Relasyon ak tab Play la
-  playCount              Int                      @default(0) // Yon kontè rapid pou pèfòmans
+  
+  plays                  Play[] 
+  playCount              Int                      @default(0) 
   albumId                String?
   album                  Album?                   @relation(fields: [albumId], references: [id], onDelete: SetNull)
   artistId               String
@@ -98,11 +98,11 @@ model RecommendationFeedback {
   id        String   @id @default(uuid())
   userId    String
   trackId   String
-  // rating: 1 = Klike/Koute, -1 = Skip/Sote
+  
   rating    Int
   createdAt DateTime @default(now())
 
-  // Relasyon (opsyonèl men rekòmande)
+  
   track Track @relation(fields: [trackId], references: [id])
 
   @@index([userId, trackId])
@@ -113,7 +113,7 @@ model Like {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  // Mete "?" pou yo ka opsyonèl
+  
   trackId String?
   track   Track?  @relation(fields: [trackId], references: [id])
 
@@ -122,7 +122,7 @@ model Like {
 
   createdAt DateTime @default(now())
 
-  // Index sa yo enpòtan pou pèfòmans ak sekirite
+  
   @@unique([userId, trackId])
   @@unique([userId, albumId])
 }
@@ -134,18 +134,18 @@ model Playlist {
   coverUrl    String? @default("https://picsum.photos/seed/playlist/400")
   isPublic    Boolean @default(true)
 
-  // Nou sere sòm likes yo isit la pou akey la pa bezwen fè kalkil chak fwa
+  
   totalLikesCount Int @default(0)
 
-  // Pou sekirite, nou ka mete yon status
-  status String @default("active") // "active", "hidden", "under_review"
+  
+  status String @default("active") 
 
-  // Relasyon ak User (Owner)
+  
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  // Relasyon ak Tracks (Many-to-Many)
-  // Atansyon: Track yo dwe gen yon jaden "likesCount" tou nan modèl pa yo
+  
+  
   tracks Track[] @relation("PlaylistTracks")
 
   createdAt DateTime @default(now())
@@ -154,7 +154,7 @@ model Playlist {
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
 
-  // Index pou akey la ka chaje playlist ki gen plis like yo trè rapid
+  
   @@index([totalLikesCount(sort: Desc)])
 }
 
@@ -177,9 +177,9 @@ model Album {
   coverUrl    String?
   genre       String?
 
-  // Jesyon Piblikasyon
-  releaseDate DateTime @default(now()) // Dat atis la chwazi a
-  isPublished Boolean  @default(false) // De defo, li kache
+  
+  releaseDate DateTime @default(now()) 
+  isPublished Boolean  @default(false) 
 
   artistId String
   artist   Profile @relation(fields: [artistId], references: [id], onDelete: Cascade)
@@ -190,33 +190,33 @@ model Album {
   likes     Like[]
 
   @@index([artistId])
-  @@index([releaseDate, isPublished]) // Pou rechèch rapid le n ap verifye dat yo
+  @@index([releaseDate, isPublished]) 
 }
 
 model Follow {
   id          String   @id @default(uuid())
-  followerId  String // Moun k ap klike abòne a
-  followingId String // Atis y ap swiv la
+  followerId  String 
+  followingId String 
   createdAt   DateTime @default(now())
 
   follower  Profile @relation("Follower", fields: [followerId], references: [id])
   following Profile @relation("Following", fields: [followingId], references: [id])
 
-  @@unique([followerId, followingId]) // Yon moun pa ka swiv yon atis 2 fwa
+  @@unique([followerId, followingId]) 
 }
 
 model Notification {
   id          String   @id @default(uuid())
   recipientId String
-  senderId    String // ID moun ki fè aksyon an
+  senderId    String 
   type        String
   relatedId   String?
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  // Relasyon pou moun k ap resevwa a
+  
   recipient User @relation("ReceivedNotifications", fields: [recipientId], references: [id])
 
-  // AJOUTE LIY SA A: Relasyon pou moun ki voye a
+  
   sender User @relation("SentNotifications", fields: [senderId], references: [id])
 }

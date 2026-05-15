@@ -8,16 +8,16 @@ export class FollowService {
 
    async toggleFollow(userId: string, targetUserId: string) {
   try {
-    // 1. Jwenn pwofil moun k ap swiv la (Fanatik la)
+    
     const followerProfile = await this.prisma.profile.findUnique({
       where: { userId: userId } 
     });
 
-    // 2. Jwenn pwofil atis moun nan vle swiv la
-    // Atansyon: Isit la targetUserId se ID Profile la (depi l soti nan URL la)
+    
+    
     const followingProfile = await this.prisma.profile.findUnique({
       where: { id: targetUserId },
-      include: { user: true } // Nou enkli user a pou n ka jwenn ID recipient an
+      include: { user: true } 
     });
 
     if (!followerProfile || !followingProfile) {
@@ -31,7 +31,7 @@ export class FollowService {
       throw new BadRequestException("Ou pa ka swiv tèt ou.");
     }
 
-    // 3. Tcheke si relasyon an egziste deja
+    
     const existingFollow = await this.prisma.follow.findUnique({
       where: {
         followerId_followingId: { followerId, followingId }
@@ -42,17 +42,17 @@ export class FollowService {
       await this.prisma.follow.delete({ where: { id: existingFollow.id } });
       return { isFollowing: false, message: "Ou pa swiv pwofil sa a ankò." };
     } else {
-      // 4. Kreye relasyon Follow la nan DB
+      
       await this.prisma.follow.create({
         data: { followerId, followingId }
       });
 
-      // 5. VOYE NOTIFIKASYON (Lojik ki korije a)
+      
       await this.notificationService.createNotification({
-        // Recipient se ATIS la (moun ki mèt followingProfile la)
+        
         recipientId: followingProfile.userId, 
         
-        // Sender se FANATIK la (moun ki konekte a)
+        
         senderId: userId, 
         
         type: 'FOLLOW',
@@ -68,7 +68,7 @@ export class FollowService {
   }
 }
 
-    //  jwenn kantite moun k ap swiv yon atis
+    
     async getFollowersCount(profileId: string) {
         return this.prisma.follow.count({
             where: { followingId: profileId },

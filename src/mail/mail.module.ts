@@ -1,3 +1,4 @@
+
 import { MailerModule } from '@nestjs-modules/mailer';
 import { Module, Global } from '@nestjs/common';
 import { MailService } from './mail.service';
@@ -7,29 +8,31 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
   imports: [
     MailerModule.forRootAsync({
-      imports: [ConfigModule], // Asire w ou gen ConfigModule nan pwojè a
+      imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
         transport: {
-          host: config.get('MAIL_HOST'),
+          host: config.get('MAIL_HOST') || 'smtp.gmail.com',
           port: 587,
-          secure: false, // false paske se pò 587
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          secure: false, 
           auth: {
             user: config.get('MAIL_USER'),
             pass: config.get('MAIL_PASS'),
           },
           tls: {
-            // Sa a enpòtan anpil pou evite Timeout sou sèvè cloud yo
+            
             rejectUnauthorized: false,
           },
         },
         defaults: {
-          from: '"H-Mizik Team" <no-reply@h-mizik.com>',
+          from: '"H-Mizik Team" <eventzmarceille190@gmail.com>'
         },
       }),
-      inject: [ConfigService],
     }),
   ],
   providers: [MailService],
   exports: [MailService],
 })
-export class MailModule {}
+export class MailModule { }

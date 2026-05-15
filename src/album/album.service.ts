@@ -1,4 +1,4 @@
-// src/album/album.service.ts
+
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from 'src/common/supabase.service';
@@ -21,38 +21,38 @@ export class AlbumService {
 
         if (!file) throw new BadRequestException('Ou dwe voye yon foto kouvèti (cover)');
 
-        // 1. Nou chèche pwofil la an premye (paske se li ki mèt album nan)
+        
         const profile = await this.prisma.profile.findFirst({
             where: {
                 OR: [
-                    { id: data.artistId },    // Si se ID pwofil la
-                    { userId: data.artistId } // Si se ID itilizatè a
+                    { id: data.artistId },    
+                    { userId: data.artistId } 
                 ]
             }
         });
 
-        // Si nou pa jwenn pwofil, la nou kanpe
+        
         if (!profile) {
             throw new BadRequestException(`Nou pa jwenn okenn pwofil pou ID: ${data.artistId}`);
         }
 
-        // 2. Upload cover la
+        
         const coverUrl = await this.supabaseService.uploadFile(file, 'covers');
 
-        // 3. Jere dat la
+        
         const scheduledDate = new Date(data.releaseDate);
         if (isNaN(scheduledDate.getTime())) {
             throw new BadRequestException('Dat piblikasyon an pa valid');
         }
 
-        // 4. Kreye album nan ak Profile ID a (profile.id)
+        
         return this.prisma.album.create({
             data: {
                 title: data.title,
                 description: data.description || "",
                 coverUrl: coverUrl,
                 genre: data.genre || "Unknown",
-                artistId: profile.id, // <--- Men kote maji a fèt
+                artistId: profile.id, 
                 releaseDate: scheduledDate,
                 isPublished: false,
             },
@@ -66,31 +66,31 @@ export class AlbumService {
         albumId: string,
         audioFile: Express.Multer.File,
         trackData: { title: string; artistId: string; duration?: string },
-        trackCoverFile?: Express.Multer.File // Nou ajoute yon paramèt opsyonèl pou cover track la
+        trackCoverFile?: Express.Multer.File 
     ) {
         const album = await this.prisma.album.findUnique({ where: { id: albumId } });
         if (!album) throw new NotFoundException('Album pa jwenn');
 
-        // 1. Upload Audio
+        
         const audioUrl = await this.supabaseService.uploadFile(audioFile, 'tracks');
 
-        // 2. Jesyon Kouvèti a
-        let finalCoverUrl = album.coverUrl; // Pa defo, se cover album nan
+        
+        let finalCoverUrl = album.coverUrl; 
 
         if (trackCoverFile) {
-            // Si atis la voye yon foto espesyal pou track sa a, nou upload li
+            
             finalCoverUrl = await this.supabaseService.uploadFile(trackCoverFile, 'tracks/covers');
         }
 
-        // 3. Kreye Track la
+        
         return this.prisma.track.create({
             data: {
                 title: trackData.title,
                 audioUrl: audioUrl,
                 duration: trackData.duration ? parseFloat(trackData.duration) : 0,
-                coverUrl: finalCoverUrl, // Isit la nou mete URL final la
+                coverUrl: finalCoverUrl, 
 
-                albumId: album.id, // Sèvi ak ID album nan
+                albumId: album.id, 
                 artistId: album.artistId,
             },
         });
@@ -115,7 +115,7 @@ export class AlbumService {
 
         let coverUrl = album.coverUrl;
 
-        // Si itilizatè a voye yon nouvo foto, nou upload li
+        
         if (file) {
             coverUrl = await this.supabaseService.uploadFile(file, 'covers');
         }
@@ -139,8 +139,8 @@ export class AlbumService {
         const track = await this.prisma.track.findUnique({ where: { id: trackId } });
         if (!track) throw new NotFoundException('Mizik sa a pa egziste');
 
-        // Opsyonèl: Ou ka efase file audio a nan Supabase tou isit la
-        // await this.supabaseService.deleteFile(track.audioUrl);
+        
+        
 
         return this.prisma.track.delete({
             where: { id: trackId }
@@ -152,7 +152,7 @@ export class AlbumService {
      * EFASE YON ALBUM NÈT (Storage + Database)
      */
     async deleteAlbum(albumId: string, userId: string) {
-        // 1. Jwenn album nan ak tout tracks li yo
+        
         const album = await this.prisma.album.findUnique({
             where: { id: albumId },
             include: { tracks: true }
@@ -160,7 +160,7 @@ export class AlbumService {
 
         if (!album) throw new NotFoundException('Album sa a pa egziste');
 
-        // 2. Sekirite: Verifye si se mèt la k ap efase l
+        
         const profile = await this.prisma.profile.findUnique({ where: { userId } });
         if (!profile || album.artistId !== profile.id) {
             throw new ForbiddenException("Ou pa gen dwa efase album sa a.");
@@ -169,24 +169,24 @@ export class AlbumService {
         try {
             const BUCKET_NAME = 'hmizik';
 
-            // 3. Prepare lis tout fichye pou n efase (Audio + Covers)
+            
             const rawFiles = album.tracks.flatMap(track => [
                 this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME),
-                // Nou efase cover track la sèlman si l diferan de cover album nan
+                
                 track.coverUrl !== album.coverUrl ? this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME) : null
             ]);
 
-            // Ajoute cover album nan tou nan lis la
+            
             rawFiles.push(this.getFilePathFromUrl(album.coverUrl, BUCKET_NAME));
 
-            // 4. Filtre tout 'null' yo pou TypeScript (Type Guard)
+            
             const filesToDelete: string[] = rawFiles.filter((path): path is string => path !== null);
 
-            // 5. EFASE SOU SUPABASE STORAGE
+            
             if (filesToDelete.length > 0) {
                 console.log(`H-MIZIK: Ap efase ${filesToDelete.length} fichye sou Storage...`);
-                // Aksè a kliyan supabase la depann de kijan SupabaseService ou a estriktire
-                // Si 'supabase' se yon pwopriyete piblik nan service la:
+                
+                
                 const { error: storageError } = await this.supabaseService['supabase'].storage
                     .from(BUCKET_NAME)
                     .remove(filesToDelete);
@@ -196,8 +196,8 @@ export class AlbumService {
                 }
             }
 
-            // 6. EFASE NAN DATABASE (Cascade Delete)
-            // Nou efase tracks yo an premye pou n asire nou pa gen kontrent
+            
+            
             await this.prisma.track.deleteMany({ where: { albumId: albumId } });
 
             return await this.prisma.album.delete({
@@ -230,7 +230,7 @@ export class AlbumService {
         return this.prisma.album.update({
             where: { id: albumId },
             data: {
-                isPublished: true, // Nou mete l pibliye
+                isPublished: true, 
                 updatedAt: new Date()
             },
             include: { tracks: true }
@@ -246,7 +246,7 @@ export class AlbumService {
     async getAlbums() {
         return this.prisma.album.findMany({
             orderBy: {
-                createdAt: 'desc' // Pou dènye album yo parèt an premye
+                createdAt: 'desc' 
             },
             include: {
                 artist: true,
@@ -267,12 +267,12 @@ export class AlbumService {
                 artistId: userId
             },
             orderBy: {
-                createdAt: 'desc' // Pou dènye album yo parèt an premye
+                createdAt: 'desc' 
             },
             include: {
                 artist: true,
                 _count: {
-                    select: { tracks: true } // Sa ap bay "trackCount" nan frontend lan
+                    select: { tracks: true } 
                 }
             }
         });
@@ -286,7 +286,7 @@ export class AlbumService {
     async getAlbumWithTracks(albumId: string) {
         const album = await this.prisma.album.findUnique({
             where: { id: albumId },
-            // Nou itilize "include" pou Prisma rale relasyon yo otomatikman
+            
             include: {
                 artist: {
                     select: {
@@ -298,21 +298,21 @@ export class AlbumService {
                 },
                 tracks: {
                     orderBy: {
-                        createdAt: 'asc', // Mizik yo ap parèt nan lòd yo te ajoute a
+                        createdAt: 'asc', 
                     },
                     include: {
                         _count: {
-                            select: { likes: true, plays: true } // Opsyonèl: si w vle wè kantite like/play
+                            select: { likes: true, plays: true } 
                         }
                     }
                 },
                 _count: {
-                    select: { tracks: true } // Ba ou kantite mizik ki nan album nan total
+                    select: { tracks: true } 
                 }
             },
         });
 
-        // Si album nan pa egziste nan database la
+        
         if (!album) {
             throw new NotFoundException(`Nou pa jwenn okenn album ak ID: ${albumId}`);
         }

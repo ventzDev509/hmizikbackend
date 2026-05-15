@@ -18,11 +18,11 @@ export class LikesService {
             if (type === 'track') {
                 const track = await this.prisma.track.findUnique({
                     where: { id: targetId },
-                    include: { artist: true } // Nou include artist pou n ka jwenn userId a
+                    include: { artist: true } 
                 });
                 if (!track) throw new NotFoundException("Mizik pa egziste.");
 
-                // Isit la, tcheke si se track.artist.userId oswa track.userId
+                
                 recipientId = track.artist?.userId || (track as any).userId;
             } else {
                 const album = await this.prisma.album.findUnique({
@@ -33,7 +33,7 @@ export class LikesService {
                 recipientId = album.artist?.userId || (album as any).userId;
             }
 
-            // ... rès lojik Like/Unlike la ...
+            
             const existingLike = await this.prisma.like.findFirst({
                 where: {
                     userId: userId,
@@ -55,7 +55,7 @@ export class LikesService {
                     },
                 });
                 await this.playlistService.syncPlaylistScores(targetId, true);
-                // VOYE NOTIFIKASYON
+                
                 if (recipientId && recipientId !== userId) {
                     await this.notificationService.createNotification({
                         recipientId: recipientId,
@@ -70,12 +70,12 @@ export class LikesService {
             throw error;
         }
     }
-    // B. JWENN TOUT FAVORIS (MIZIK AK ALBUM)
+    
     async getUserFavorites(userId: string) {
         const likes = await this.prisma.like.findMany({
             where: { userId },
             include: {
-                // Rale Mizik yo
+                
                 track: {
                     include: {
                         artist: {
@@ -83,20 +83,20 @@ export class LikesService {
                         }
                     }
                 },
-                // Rale Album yo
+                
                 album: {
                     include: {
                         artist: {
-                            select: { username: true } // Ajoute select ou bezwen yo
+                            select: { username: true } 
                         },
-                        tracks: true // Si w vle tracks ki nan album nan tou
+                        tracks: true 
                     }
                 }
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        // Filtre ak map done yo pou nou separe yo
+        
         return {
             tracks: likes.filter(like => like.track).map(like => like.track),
             albums: likes.filter(like => like.album).map(like => like.album)

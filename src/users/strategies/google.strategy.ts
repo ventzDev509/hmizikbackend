@@ -15,7 +15,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     });
   }
 
-  // Retire 'payload' nan paramèt yo, li pa egziste isit la
+  
   async validate(
     accessToken: string,
     refreshToken: string,
@@ -25,7 +25,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     try {
       const { name, emails, photos } = profile;
 
-      // Nou prepare objè user a sèlman ak done Google voye yo
+      
       const user = {
         email: emails[0].value,
         firstName: name.givenName,
@@ -34,7 +34,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         accessToken,
       };
 
-      // Nou voye user a bay Passport (l ap disponib nan req.user)
+      
       done(null, user);
     } catch (error) {
       console.error("Erè nan validate Google:", error);

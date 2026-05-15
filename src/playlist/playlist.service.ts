@@ -42,7 +42,7 @@ export class PlaylistService {
                 user: {
                     select: { name: true }
                 },
-                //  Rekipere 4 premye mizik yo pou kouvèti a
+                
                 tracks: {
                     take: 4,
                     select: {
@@ -72,25 +72,25 @@ export class PlaylistService {
             if (isAlreadyInPlaylist) {
                 throw new ForbiddenException('Mizik sa a deja nan playlist la');
             }
-            // 1. Rekipere mizik la ak KANTITE like li genyen
+            
             const track = await this.prisma.track.findUnique({
                 where: { id: trackId },
                 include: {
                     _count: {
-                        select: { likes: true } // Sa a ap ba ou kantite like la dirèkteman
+                        select: { likes: true } 
                     }
                 }
             });
 
             if (!track) throw new NotFoundException('Mizik sa pa egziste');
 
-            // 2. Mizajou playlist la ak kantite sa a
+            
             return this.prisma.playlist.update({
                 where: { id: playlistId },
                 data: {
                     tracks: { connect: { id: trackId } },
                     totalLikesCount: {
-                        // Nou itilize track._count.likes kounye a
+                        
                         increment: track._count.likes || 0
                     }
                 },
@@ -106,7 +106,7 @@ export class PlaylistService {
      * Soustrè valè likes li nan nòt total la
      */
     async removeTrack(playlistId: string, trackId: string) {
-        // 1. Rekipere kantite like mizik la genyen anvan nou dekonekte l
+        
         const track = await this.prisma.track.findUnique({
             where: { id: trackId },
             include: {
@@ -118,13 +118,13 @@ export class PlaylistService {
 
         if (!track) throw new NotFoundException('Mizik sa pa egziste');
 
-        // 2. Retire mizik la epi dekremente totalLikesCount la
+        
         return this.prisma.playlist.update({
             where: { id: playlistId },
             data: {
                 tracks: { disconnect: { id: trackId } },
                 totalLikesCount: {
-                    // Si mizik la te gen 10 likes, n ap retire 10 nan playlist la
+                    
                     decrement: track._count.likes || 0
                 }
             }

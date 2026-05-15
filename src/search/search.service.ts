@@ -9,7 +9,7 @@ export class SearchService {
         if (!query || query.length < 2) return { tracks: [], artists: [], playlists: [], albums: [] };
 
         const [tracks, artists, albums, playlists] = await Promise.all([
-            // 1. Tracks
+            
             this.prisma.track.findMany({
                 where: {
                     OR: [
@@ -25,7 +25,7 @@ export class SearchService {
                 take: 10,
             }),
 
-            // 2. Artists (Profiles)
+            
             this.prisma.profile.findMany({
                 where: {
                     username: { contains: query, mode: 'insensitive' },
@@ -33,7 +33,7 @@ export class SearchService {
                 take: 5,
             }),
 
-            // 3. Albums (SA TE NAN 4TRÈM PLAS ANVAN)
+            
             this.prisma.album.findMany({
                 where: {
                     title: { contains: query, mode: 'insensitive' },
@@ -45,7 +45,7 @@ export class SearchService {
                 take: 5,
             }),
 
-            // 4. Playlists (SA TE NAN 3ZYÈM PLAS ANVAN)
+            
             this.prisma.playlist.findMany({
                 where: {
                     name: { contains: query, mode: 'insensitive' },

@@ -1,4 +1,4 @@
-// src/album/publish.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,9 +17,9 @@ export class PublishService {
     try {
       const result = await this.prisma.album.updateMany({
         where: {
-          isPublished: false, // Sèlman sa ki poko pibliye
+          isPublished: false, 
           releaseDate: {
-            lte: now, // Si dat la <= kounye a
+            lte: now, 
           },
         },
         data: {

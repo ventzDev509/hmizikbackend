@@ -8,13 +8,13 @@ export class LikesController {
   constructor(private readonly likesService: LikesService) { }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id') // Kenbe sèlman sa a
+  @Post(':id') 
   async toggle(
     @Request() req,
-    @Param('id') id: string, // 'id' sa a ap toujou matche ak ':id' ki anlè a
+    @Param('id') id: string, 
     @Query('type') type: 'track' | 'album' = 'track'
   ) {
-    // Debug pou w asire w ID a rive
+    
     console.log(`Log: Like ${type} ak ID: ${id}`);
 
     if (!id || id === 'undefined') {

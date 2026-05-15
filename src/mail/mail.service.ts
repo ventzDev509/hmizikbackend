@@ -9,7 +9,7 @@ export class MailService {
   constructor(private mailerService: MailerService) { }
 
   async sendUserConfirmation(user: any, token: string) {
-    // Asire w process.env.LINK fini san "/" pou evite double slash // nan URL la
+    
     const baseUrl = process.env.LINK?.replace(/\/$/, '');
     const url = `${baseUrl}/confirm?token=${token}`;
 
@@ -17,7 +17,7 @@ export class MailService {
       await this.mailerService.sendMail({
         to: user.email,
         subject: 'Aktive kont H-Mizik ou kounye a!',
-        // Si w ap itilize HTML dirèkteman, ou pa bezwen 'template'
+        
         html: `
         <div style="background-color: #09090b; color: #ffffff; font-family: 'Inter', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 40px; border-radius: 24px; text-align: center; border: 1px solid #1f1f23;">
           
@@ -65,4 +65,4 @@ export class MailService {
       });
     }
   }
-}
+} 

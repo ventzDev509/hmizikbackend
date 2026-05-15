@@ -25,43 +25,43 @@ export class TracksService {
         );
     }
  
-    // 1. KREYE YON TRACK (UPLOAD)
-    // async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
-    //     const profile = await this.prisma.profile.findUnique({ where: { userId } });
+    
+    
+    
 
-    //     if (!profile || !profile.isArtist) {
-    //         throw new BadRequestException("Sèlman atis ki ka pibliye mizik.");
-    //     }
+    
+    
+    
 
-    //     if (!files.audio || !files.audio[0]) {
-    //         throw new BadRequestException("Fichye audio a obligatwa.");
-    //     }
+    
+    
+    
 
-    //     try {
-    //         const audioUrl = await this.supabaseService.uploadFile(files.audio[0], 'tracks');
-    //         let coverUrl: string | null = null;
-    //         if (files.cover && files.cover[0]) {
-    //             coverUrl = await this.supabaseService.uploadFile(files.cover[0], 'covers');
-    //         }
+    
+    
+    
+    
+    
+    
 
-    //         return await this.prisma.track.create({
-    //             data: {
-    //                 title: body.title,
-    //                 genre: body.genre || "Konpa",
-    //                 duration: body.duration ? parseFloat(body.duration) : 0,
-    //                 audioUrl,
-    //                 coverUrl,
-    //                 artistId: profile.id,
-    //             },
-    //             include: { artist: true }
-    //         });
-    //     } catch (error) {
-    //         throw new BadRequestException(`Erè kreyasyon: ${error.message}`);
-    //     }
-    // }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     async create(userId: string, body: any, files: { audio?: Express.Multer.File[], cover?: Express.Multer.File[] }) {
-        // 1. Verifikasyon Atis la
+        
         const profile = await this.prisma.profile.findUnique({ where: { userId } });
 
         if (!profile || !profile.isArtist) {
@@ -77,13 +77,13 @@ export class TracksService {
             let bpmCalculated = 0;
             let durationCalculated = 0;
 
-            // --- 2. ANALIZ RAPID (METADATA) ---
+            
             try {
                 const metadata = await mm.parseBuffer(audioFile.buffer, audioFile.mimetype);
                 durationCalculated = metadata.format.duration || 0;
                 bpmCalculated = metadata.common.bpm || 0;
 
-                // Fallback pou Raboday si metadata vid
+                
                 if (bpmCalculated === 0 && body.genre === "Raboday") {
                     bpmCalculated = 150;
                 }
@@ -91,8 +91,8 @@ export class TracksService {
                 console.error("⚠️ Erè metadata:", analysisError.message);
             }
 
-            // --- 3. UPLOAD SOU SUPABASE ---
-            // Nou dwe fè sa AVAN nou rele Python paske Python bezwen URL la
+            
+            
             const audioUrl = await this.supabaseService.uploadFile(audioFile, 'tracks');
 
             let coverUrl: string | null = null;
@@ -100,7 +100,7 @@ export class TracksService {
                 coverUrl = await this.supabaseService.uploadFile(files.cover[0], 'covers');
             }
 
-            // --- 4. KREYASYON NAN BAZ DONE (PRISMA) ---
+            
             const newTrack = await this.prisma.track.create({
                 data: {
                     title: body.title,
@@ -114,12 +114,12 @@ export class TracksService {
                 include: { artist: true }
             });
 
-            // --- 5. DEKLANCHE ANALIZ AI (PYTHON) ---
-            // Si apre metadata BPM nan toujou 0, nou rele Python nan background
+            
+            
             if (newTrack.bpm === 0) {
                 console.log(`🚀 Siyal voye bay Python pou analiz: ${newTrack.id}`);
 
-                // Nou pa mete 'await' isit la pou NestJS ka reponn kliyan an rapid
+                
                 this.httpService.post(`${process.env.PYTHON_AI_URL}/analyze-bpm`, {
                     trackId: newTrack.id,
                     audioUrl: newTrack.audioUrl
@@ -146,7 +146,7 @@ export class TracksService {
 
             return await this.prisma.track.update({
                 where: { id },
-                data: { bpm: Math.round(bpm) }, // Nou asire se yon chif antye
+                data: { bpm: Math.round(bpm) }, 
             });
         } catch (error) {
             console.error(`❌ Erè nan updateBpm Service: ${error.message}`);
@@ -180,7 +180,7 @@ export class TracksService {
         };
     }
 
-    // 3. JWENN TRACK YON ATIS PRESI (Pwofil)
+    
     async findByArtist(artistId: string) {
         return await this.prisma.track.findMany({
             where: { artistId },
@@ -188,9 +188,9 @@ export class TracksService {
         });
     }
 
-    // 8. JWENN TOUT MIZIK YON ITILIZATÈ PRESI (POU PWOFIL LI)
+    
     async findTracksByUserProfile(userId: string, limit: number = 10, page: number = 1) {
-        // a. Nou chèche pwofil la anvan pou nou jwenn artistId (profile.id)
+        
         const profile = await this.prisma.profile.findUnique({
             where: { userId },
         });
@@ -201,13 +201,13 @@ export class TracksService {
 
         const skip = (page - 1) * limit;
 
-        // b. Nou rale mizik ki lye ak pwofil sa a sèlman
+        
         const [tracks, total] = await Promise.all([
             this.prisma.track.findMany({
-                where: { artistId: profile.id }, // Se isit la filtè a fèt
+                where: { artistId: profile.id }, 
                 take: limit,
                 skip: skip,
-                orderBy: { createdAt: 'desc' }, // Pi nouvo yo anlè
+                orderBy: { createdAt: 'desc' }, 
                 include: {
                     artist: {
                         select: {
@@ -234,7 +234,7 @@ export class TracksService {
         };
     }
 
-    // 4. JWENN YON SÈL TRACK PA ID
+    
     async findOne(id: string) {
         const track = await this.prisma.track.findUnique({
             where: { id },
@@ -244,7 +244,7 @@ export class TracksService {
         return track;
     }
 
-    // 5. MOUTE KANTITE FWA YO KOUTE YON MIZIK (PLAYS)
+    
 
 
     async incrementPlays(trackId: string, userId?: string, ip?: string) {
@@ -254,7 +254,7 @@ export class TracksService {
         if (userId) orConditions.push({ userId });
         if (ip) orConditions.push({ userIp: ip });
 
-        // 1. Tcheke si moun nan te koute mizik sa a deja nan 30 minit ki sot pase yo
+        
         const recentPlay = orConditions.length > 0
             ? await this.prisma.play.findFirst({
                 where: {
@@ -265,7 +265,7 @@ export class TracksService {
             })
             : null;
 
-        // 2. Si li te koute l deja, nou jis kreye "Play" la san ogmante "playCount" la (Spam)
+        
         if (recentPlay) {
             return await this.prisma.play.create({
                 data: {
@@ -277,8 +277,8 @@ export class TracksService {
             });
         }
 
-        // 3. SI SE YON EKOUT VALIDE (Premye fwa nan 30 min):
-        // Nou rale vil la kounye a
+        
+        
         let city = "Lòt bò dlo";
         if (ip && ip !== '::1' && ip !== '127.0.0.1') {
             try {
@@ -291,18 +291,18 @@ export class TracksService {
                 console.error("Lokalizasyon echwe, n ap itilize default");
             }
         } else {
-            // Pou tès ou yo nan Cap-Haitien
+            
             city = "Cap-Haïtien";
         }
 
-        // 4. Nou fè tranzaksyon an: Sere Play la ak Vil la + Ogmante PlayCount la
+        
         return await this.prisma.$transaction([
             this.prisma.play.create({
                 data: {
                     trackId,
                     userId,
                     userIp: ip,
-                    city: city // Nou sere vil la isit la
+                    city: city 
                 },
             }),
             this.prisma.track.update({
@@ -311,12 +311,12 @@ export class TracksService {
             }),
         ]);
     }
-    // 9. JWENN MIZIK KI GEN PLIS EKOUT (TRENDING)
+    
     async findTrending(limit: number = 10) {
         return await this.prisma.track.findMany({
             take: limit,
             orderBy: {
-                // Sèvi ak playCount (ki se yon Int) olye de plays (ki se yon relasyon)
+                
                 playCount: 'desc',
             },
             include: {
@@ -329,7 +329,7 @@ export class TracksService {
             }
         });
     }
-    // 6. MODIFYE YON TRACK
+    
     async update(userId: string, id: string, updateData: any) {
         const track = await this.findOne(id);
         const profile = await this.prisma.profile.findUnique({ where: { userId } });
@@ -346,7 +346,7 @@ export class TracksService {
 
 
 
-    // Nan yon SupabaseService oswa dirèkteman nan TrackService la
+    
     async deleteFileFromStorage(fileUrl: string, bucketName: string) {
 
         const filePath = fileUrl.split(`${bucketName}/`)[1];
@@ -364,9 +364,9 @@ export class TracksService {
         return data;
     }
 
-    // Fonksyon pou rale "path" la nan URL Supabase la
+    
     private getFilePathFromUrl(url: string, bucket: string) {
-        // Sa ap rale tout sa ki apre non bucket la nan URL la
+        
         const parts = url.split(`${bucket}/`);
 
         return parts.length > 1 ? parts[1] : null;
@@ -381,13 +381,13 @@ export class TracksService {
         }
 
         try {
-            // 1. Netwaye Likes/Playlists (Kòd ou a te bon la)
+            
             await this.prisma.like.deleteMany({ where: { trackId: id } });
 
-            // 2. EFASE SOU SUPABASE (Nou sèvi ak bucket 'hmizik' la)
-            const BUCKET_NAME = 'hmizik'; // Non ki nan URL ou a
+            
+            const BUCKET_NAME = 'hmizik'; 
 
-            // Efase Audio
+            
             if (track.audioUrl) {
                 const audioPath = this.getFilePathFromUrl(track.audioUrl, BUCKET_NAME);
                 if (audioPath) {
@@ -398,7 +398,7 @@ export class TracksService {
                 }
             }
 
-            // Efase Cover
+            
             if (track.coverUrl) {
                 const coverPath = this.getFilePathFromUrl(track.coverUrl, BUCKET_NAME);
                 if (coverPath) {
@@ -409,7 +409,7 @@ export class TracksService {
                 }
             }
 
-            // 3. Efase nan DB
+            
             return await this.prisma.track.delete({ where: { id } });
 
         } catch (error) {
