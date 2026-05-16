@@ -7,7 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
   id                   String    @id @default(uuid())
   name                 String
@@ -32,7 +31,6 @@ model User {
   playlists         Playlist[]
 }
 
-
 model Profile {
   id              String  @id @default(uuid())
   username        String? @unique
@@ -45,34 +43,33 @@ model Profile {
   customTarif     Float   @default(0.20)
   payoutThreshold Float   @default(2500)
   socialLinks     Json?   @default("{\"instagram\": \"\", \"facebook\": \"\", \"youtube\": \"\", \"tiktok\": \"\"}")
+  balance         Float   @default(0.00) 
+  totalEarned     Float   @default(0.00)
 
-  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @unique
   followers Follow[] @relation("Following")
 
-  
-  following Follow[]   @relation("Follower")
-  
+  following Follow[] @relation("Follower")
+
   tracks    Track[]
   playlists Playlist[]
   albums    Album[]
   updatedAt DateTime   @updatedAt
 }
 
-
 model Track {
-  id                     String                   @id @default(uuid())
-  title                  String
-  genre                  String?
-  audioUrl               String
-  coverUrl               String?
-  duration               Float?
-  isActive               Boolean?                 @default(true)
-  bpm                    Float?
-  
-  plays                  Play[] 
-  playCount              Int                      @default(0) 
+  id       String   @id @default(uuid())
+  title    String
+  genre    String?
+  audioUrl String
+  coverUrl String?
+  duration Float?
+  isActive Boolean? @default(true)
+  bpm      Float?
+
+  plays                  Play[]
+  playCount              Int                      @default(0)
   albumId                String?
   album                  Album?                   @relation(fields: [albumId], references: [id], onDelete: SetNull)
   artistId               String
@@ -95,14 +92,13 @@ enum UserRole {
 }
 
 model RecommendationFeedback {
-  id        String   @id @default(uuid())
-  userId    String
-  trackId   String
-  
+  id      String @id @default(uuid())
+  userId  String
+  trackId String
+
   rating    Int
   createdAt DateTime @default(now())
 
-  
   track Track @relation(fields: [trackId], references: [id])
 
   @@index([userId, trackId])
@@ -113,7 +109,6 @@ model Like {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  
   trackId String?
   track   Track?  @relation(fields: [trackId], references: [id])
 
@@ -122,7 +117,6 @@ model Like {
 
   createdAt DateTime @default(now())
 
-  
   @@unique([userId, trackId])
   @@unique([userId, albumId])
 }
@@ -134,18 +128,13 @@ model Playlist {
   coverUrl    String? @default("https://picsum.photos/seed/playlist/400")
   isPublic    Boolean @default(true)
 
-  
   totalLikesCount Int @default(0)
 
-  
-  status String @default("active") 
+  status String @default("active")
 
-  
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  
-  
   tracks Track[] @relation("PlaylistTracks")
 
   createdAt DateTime @default(now())
@@ -154,7 +143,6 @@ model Playlist {
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
 
-  
   @@index([totalLikesCount(sort: Desc)])
 }
 
@@ -177,9 +165,8 @@ model Album {
   coverUrl    String?
   genre       String?
 
-  
-  releaseDate DateTime @default(now()) 
-  isPublished Boolean  @default(false) 
+  releaseDate DateTime @default(now())
+  isPublished Boolean  @default(false)
 
   artistId String
   artist   Profile @relation(fields: [artistId], references: [id], onDelete: Cascade)
@@ -190,33 +177,31 @@ model Album {
   likes     Like[]
 
   @@index([artistId])
-  @@index([releaseDate, isPublished]) 
+  @@index([releaseDate, isPublished])
 }
 
 model Follow {
   id          String   @id @default(uuid())
-  followerId  String 
-  followingId String 
+  followerId  String
+  followingId String
   createdAt   DateTime @default(now())
 
   follower  Profile @relation("Follower", fields: [followerId], references: [id])
   following Profile @relation("Following", fields: [followingId], references: [id])
 
-  @@unique([followerId, followingId]) 
+  @@unique([followerId, followingId])
 }
 
 model Notification {
   id          String   @id @default(uuid())
   recipientId String
-  senderId    String 
+  senderId    String
   type        String
   relatedId   String?
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  
   recipient User @relation("ReceivedNotifications", fields: [recipientId], references: [id])
 
-  
   sender User @relation("SentNotifications", fields: [senderId], references: [id])
 }

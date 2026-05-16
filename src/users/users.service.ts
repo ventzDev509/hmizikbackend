@@ -199,7 +199,6 @@ export class UsersService {
 
     /**
      * 2. KONFIME IMÈL (Lè user a klike lyen an)
-     * Sa a se "Login with Email link" validation an.
      */
     async confirmEmail(token: string) {
         const user = await this.prisma.user.findFirst({
